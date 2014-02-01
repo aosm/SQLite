@@ -1,0 +1,25 @@
+<plist version="1.0">
+<array>
+<dict>
+        <key>OpenSourceProject</key>
+        <string>SQLite</string>
+        <key>OpenSourceVersion</key>
+        <string>3.1.2</string>
+        <key>OpenSourceURL</key>
+        <string>http://www.sqlite.org/sqlite-3.1.2.tar.gz</string>
+        <key>OpenSourceSHA1</key>
+        <string>3f63f9f87595004a514058808a910a786f2671ee</string>
+        <key>OpenSourceImportDate</key>
+        <string>2005-02-15</string>
+        <key>OpenSourceModifications</key>
+        <array>
+                <string>Numerous.</string>
+        </array>
+        <key>OpenSourceLicense</key>
+        <string>Public Domain</string>
+        <key>OpenSourceLicenseFile</key>
+        <string>SQLite.txt</string>
+</dict>
+</array>
+</plist>
+

@@ -1,0 +1,12 @@
+*** Integrating changes to configure scritps and preserving single-module link
+
+If  you need to integrate changes to the configure script, you'll need to do additional work to make sure that SQLite continues to build single-module.  Specifically, you'll need to get an updated libtool.m4 (attached to <rdar://problem/3737597>) and replace your /usr/share/aclocal/libtool.m4 with it.  Then you'll need to issue these commands:
+
+  % cd SQLite3/SQLite3  # the same level as the configure script etc.
+  % aclocal
+  % glibtoolize -f -c
+  % autoconf -f
+
+These will ensure that SQLite3/aclocal.m4 and SQLite3/configure are regenerated with the proper libtool settings to generate a single-module dylib on Mac OS X and Darwin.
+
+When <rdar://problem/3737597> is addressed, you'll no longer need to replace your /usr/share/aclocal/libtool.m4 with the one attached to it and that part of this note can be removed.
