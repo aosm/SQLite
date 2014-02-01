@@ -198,27 +198,24 @@ catch {db close}
 # in WAL mode the xSync method is invoked as expected for each of
 # synchronous=off, synchronous=normal and synchronous=full.
 #
-# APPLE: checkpoint_fullfsync is on by default
-#   was:
-#   2 normal  
-#     {test.db-wal normal test.db normal}
-#   3 full    
-#     {test.db-wal normal test.db-wal normal test.db-wal normal test.db normal}
-#
-#   now:
-#   2 normal  
-#     {test.db-wal full test.db full}
-#   3 full    
-#     {test.db-wal normal test.db-wal normal test.db-wal full test.db full}
-#
 foreach {tn syncmode synccount} {
   1 off     
     {}
   2 normal  
-    {test.db-wal full test.db full}
+    {test.db-wal normal test.db normal}
   3 full    
-    {test.db-wal normal test.db-wal normal test.db-wal full test.db full}
+    {test.db-wal normal test.db-wal normal test.db-wal normal test.db normal}
 } {
+
+  if { $::sqlite_options(default_ckptfullfsync) } {
+    # checkpoint_fullfsync on by default
+    if { $tn == 2} {
+      set synccount {test.db-wal full test.db full}
+    }
+    if { $tn == 3} {
+      set synccount {test.db-wal normal test.db-wal normal test.db-wal full test.db full}
+    }
+  }
 
   proc sync_counter {args} { 
     foreach {method filename id flags} $args break
@@ -232,8 +229,9 @@ foreach {tn syncmode synccount} {
     T script sync_counter
     sqlite3 db test.db -vfs T
   
-    execsql "PRAGMA synchronous = $syncmode"
     execsql { PRAGMA journal_mode = WAL }
+    execsql { SELECT * FROM sqlite_master }
+    execsql "PRAGMA synchronous = $syncmode"
 
     set ::syncs [list]
     T filter xSync
@@ -430,6 +428,7 @@ testvfs T -default 1
 do_test wal3-6.1.1 {
   file delete -force test.db test.db-journal test.db wal
   sqlite3 db test.db
+  execsql { PRAGMA auto_vacuum = off }
   execsql { PRAGMA journal_mode = WAL }
   execsql {
     CREATE TABLE t1(a, b);
@@ -444,7 +443,7 @@ do_test wal3-6.1.2 {
 } {o t t f}
 do_test wal3-6.1.3 {
   execsql { PRAGMA wal_checkpoint } db2
-} {}
+} [list 0 [wal_frames db 4 3] [wal_frames db 4 3]]
 
 # At this point the log file has been fully checkpointed. However, 
 # connection [db3] holds a lock that prevents the log from being wrapped.
@@ -511,6 +510,7 @@ do_test wal3-6.2.1 {
   file delete -force test.db test.db-journal test.db wal
   sqlite3 db test.db
   sqlite3 db2 test.db
+  execsql { PRAGMA auto_vacuum = off }
   execsql { PRAGMA journal_mode = WAL }
   execsql {
     CREATE TABLE t1(a, b);
@@ -532,7 +532,7 @@ proc lock_callback {method file handle spec} {
 }
 do_test wal3-6.2.2 {
   execsql { PRAGMA wal_checkpoint }
-} {}
+} [list 0 [wal_frames db 4 3] [wal_frames db 4 3]]
 do_test wal3-6.2.3 {
   set ::R
 } {h h l b}
@@ -629,19 +629,23 @@ T delete
 
 #-------------------------------------------------------------------------
 # 
-do_test wal3-8.1 {
+do_test wal3-8.1.1 {
   file delete -force test.db test.db-journal test.db wal .test.db-conch
   sqlite3 db test.db
   sqlite3 db2 test.db
   execsql {
+    PRAGMA auto_vacuum = off;
     PRAGMA journal_mode = WAL;
     CREATE TABLE b(c);
     INSERT INTO b VALUES('Tehran');
     INSERT INTO b VALUES('Qom');
     INSERT INTO b VALUES('Markazi');
-    PRAGMA wal_checkpoint;
   }
 } {wal}
+
+do_test wal3.8.1.2 {
+  execsql { PRAGMA wal_checkpoint; }
+} [list 0 [wal_frames db 5 4] [wal_frames db 5 4]]
 do_test wal3-8.2 {
   execsql { SELECT * FROM b }
 } {Tehran Qom Markazi}

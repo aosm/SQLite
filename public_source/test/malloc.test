@@ -867,7 +867,7 @@ if {[db eval {PRAGMA locking_mode}]!="exclusive"} {
   catch { db2 close }
 }
 
-ifcapable stat2 {
+ifcapable stat2&&utf16 {
   do_malloc_test 38 -tclprep {
     add_test_collate db 0 0 1
     execsql {
@@ -892,6 +892,18 @@ ifcapable stat2 {
   } -sqlbody {
     SELECT * FROM t4 AS t41, t4 AS t42 WHERE t41.x>'ddd' AND t42.x>'ccc'
   }
+}
+
+# Test that if an OOM error occurs, aux-data is still correctly destroyed.
+# This test case was causing either a memory-leak or an assert() failure
+# at one point, depending on the configuration.
+#
+do_malloc_test 39 -tclprep {
+  sqlite3 db test.db
+} -sqlbody {
+  SELECT test_auxdata('abc', 'def');
+} -cleanup {
+  db close
 }
 
 # Ensure that no file descriptors were leaked.

@@ -137,7 +137,7 @@ int sqlite3OsOpen(
   ** down into the VFS layer.  Some SQLITE_OPEN_ flags (for example,
   ** SQLITE_OPEN_FULLMUTEX or SQLITE_OPEN_SHAREDCACHE) are blocked before
   ** reaching the VFS. */
-#if SQLITE_ENABLE_LOCKING_STYLE
+#if SQLITE_ENABLE_DATA_PROTECTION
   openFlags = flags & (0x87f3f | SQLITE_OPEN_FILEPROTECTION_MASK);
 #else
   openFlags = flags & 0x87f3f;

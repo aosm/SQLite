@@ -293,6 +293,8 @@
 		66C9D254129341650027AD74 /* mkkeywordhash.c in Sources */ = {isa = PBXBuildFile; fileRef = 6812039209CFF555007D44CD /* mkkeywordhash.c */; };
 		66CB990011C9B926006637CE /* ctime.c in Sources */ = {isa = PBXBuildFile; fileRef = 66CB98FF11C9B926006637CE /* ctime.c */; };
 		66CB990111C9B926006637CE /* ctime.c in Sources */ = {isa = PBXBuildFile; fileRef = 66CB98FF11C9B926006637CE /* ctime.c */; };
+		66CDA3E913B2BEEF009DDFB2 /* fts3_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 66CDA3E813B2BEEF009DDFB2 /* fts3_test.c */; };
+		66CDA3EB13B2BF18009DDFB2 /* fts3_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 66CDA3E813B2BEEF009DDFB2 /* fts3_test.c */; };
 		66E1A4E511D5312F00BCF6C7 /* test_vfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 66ABFBF911D493B800404FCA /* test_vfs.c */; };
 		66E1A4E611D5313000BCF6C7 /* test_demovfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 66ABFBF811D493B800404FCA /* test_demovfs.c */; };
 		66E5E2FD130484FF00A3FE37 /* test_multiplex.c in Sources */ = {isa = PBXBuildFile; fileRef = 66E5E2F9130484FF00A3FE37 /* test_multiplex.c */; };
@@ -302,8 +304,28 @@
 		66E5E301130484FF00A3FE37 /* test_rtree.c in Sources */ = {isa = PBXBuildFile; fileRef = 66E5E2FB130484FF00A3FE37 /* test_rtree.c */; };
 		66E5E302130484FF00A3FE37 /* test_rtree.c in Sources */ = {isa = PBXBuildFile; fileRef = 66E5E2FB130484FF00A3FE37 /* test_rtree.c */; };
 		66E6B2F8102A307B00D6B4E7 /* pcache_purgeable.c in Sources */ = {isa = PBXBuildFile; fileRef = 662FB76E0F69A29500DA413F /* pcache_purgeable.c */; };
-		66F1B8F81201017D009C86E8 /* fts3_porter.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB60E561B6F00B315E8 /* fts3_porter.c */; };
-		828D8C081028F45600C4557E /* rtree.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDC30E561B6F00B315E8 /* rtree.c */; };
+		66F1B8F81201017D009C86E8 /* fts3_porter.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB60E561B6F00B315E8 /* fts3_porter.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F3D13AE9BC600BE9AA2 /* test_fuzzer.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */; };
+		82838F3E13AE9BC600BE9AA2 /* test_fuzzer.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */; };
+		82838F3F13AE9BC600BE9AA2 /* test_syscall.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3A13AE9BC600BE9AA2 /* test_syscall.c */; };
+		82838F4013AE9BC600BE9AA2 /* test_syscall.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3A13AE9BC600BE9AA2 /* test_syscall.c */; };
+		82838F4113AE9BC600BE9AA2 /* test_vfstrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */; };
+		82838F4213AE9BC600BE9AA2 /* test_vfstrace.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */; };
+		82838F4313AE9BC600BE9AA2 /* test_wholenumber.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */; };
+		82838F4413AE9BC600BE9AA2 /* test_wholenumber.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */; };
+		82838F4713AE9E4300BE9AA2 /* fts3_aux.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F4613AE9E4300BE9AA2 /* fts3_aux.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4813AE9E7200BE9AA2 /* fts3.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB10E561B6F00B315E8 /* fts3.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4913AE9E7200BE9AA2 /* fts3_expr.c in Sources */ = {isa = PBXBuildFile; fileRef = 660269EF10DAAB3700FFDFE3 /* fts3_expr.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4A13AE9E7200BE9AA2 /* fts3_hash.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB30E561B6F00B315E8 /* fts3_hash.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4B13AE9E7200BE9AA2 /* fts3_icu.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB50E561B6F00B315E8 /* fts3_icu.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4C13AE9E7300BE9AA2 /* fts3_snippet.c in Sources */ = {isa = PBXBuildFile; fileRef = 660269F010DAAB3700FFDFE3 /* fts3_snippet.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4D13AE9E7300BE9AA2 /* fts3_tokenizer.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB70E561B6F00B315E8 /* fts3_tokenizer.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4E13AE9E7300BE9AA2 /* fts3_tokenizer1.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDB90E561B6F00B315E8 /* fts3_tokenizer1.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F4F13AE9E7300BE9AA2 /* fts3_write.c in Sources */ = {isa = PBXBuildFile; fileRef = 660269F110DAAB3700FFDFE3 /* fts3_write.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F5013AE9E9600BE9AA2 /* icu.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDBE0E561B6F00B315E8 /* icu.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
+		82838F5213AE9F2C00BE9AA2 /* fts3_term.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F5113AE9F2C00BE9AA2 /* fts3_term.c */; };
+		82838F5313AE9F2C00BE9AA2 /* fts3_term.c in Sources */ = {isa = PBXBuildFile; fileRef = 82838F5113AE9F2C00BE9AA2 /* fts3_term.c */; };
+		828D8C081028F45600C4557E /* rtree.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FDC30E561B6F00B315E8 /* rtree.c */; settings = {COMPILER_FLAGS = "-DSQLITE_CORE"; }; };
 		828D8C091028F45700C4557E /* rtree.h in Headers */ = {isa = PBXBuildFile; fileRef = 6670FDC40E561B6F00B315E8 /* rtree.h */; };
 		C5114B320F4281C200818687 /* sqlite3.h in Headers */ = {isa = PBXBuildFile; fileRef = 66C450B60F20086900D0A4DD /* sqlite3.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		C5114B330F4281C200818687 /* sqlite3ext.h in Headers */ = {isa = PBXBuildFile; fileRef = 6670FBCD0E5617B200B315E8 /* sqlite3ext.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -2252,6 +2274,75 @@
 		66CD7F4D1192012A009D068D /* sql-modules.wiki */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "sql-modules.wiki"; sourceTree = "<group>"; };
 		66CD7F4E1192012A009D068D /* th3.wiki */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = th3.wiki; sourceTree = "<group>"; };
 		66CD7F4F1192012A009D068D /* TH3KnownFailures.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TH3KnownFailures.txt; sourceTree = "<group>"; };
+		66CDA3E813B2BEEF009DDFB2 /* fts3_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fts3_test.c; sourceTree = "<group>"; };
+		66CDA3EC13B2C7B2009DDFB2 /* build-shell.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "build-shell.sh"; sourceTree = "<group>"; };
+		66CDA3ED13B2C7B3009DDFB2 /* getlock.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = getlock.c; sourceTree = "<group>"; };
+		66CDA3EE13B2C7B3009DDFB2 /* rollback-test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "rollback-test.c"; sourceTree = "<group>"; };
+		66CDA3EF13B2C7B3009DDFB2 /* split-sqlite3c.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "split-sqlite3c.tcl"; sourceTree = "<group>"; };
+		66CDA3F013B2C7B3009DDFB2 /* symbols.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = symbols.sh; sourceTree = "<group>"; };
+		66CDA3F113B2C7B3009DDFB2 /* tostr.awk */ = {isa = PBXFileReference; lastKnownFileType = text; path = tostr.awk; sourceTree = "<group>"; };
+		66CDA3F213B2C7B3009DDFB2 /* warnings.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = warnings.sh; sourceTree = "<group>"; };
+		66CDA3F313B2C7D6009DDFB2 /* fts3auto.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3auto.test; sourceTree = "<group>"; };
+		66CDA3F413B2C7D6009DDFB2 /* fts3prefix.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3prefix.test; sourceTree = "<group>"; };
+		66CDA3F513B2C7D6009DDFB2 /* tkt-bd484a090c.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-bd484a090c.test"; sourceTree = "<group>"; };
+		66D0E57013E348E400013412 /* cG.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = cG.cfg; sourceTree = "<group>"; };
+		66D0E57113E348E400013412 /* dotlock.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = dotlock.cfg; sourceTree = "<group>"; };
+		66D0E57213E348E400013412 /* eintr1.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = eintr1.cfg; sourceTree = "<group>"; };
+		66D0E57313E348E400013412 /* excl.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = excl.cfg; sourceTree = "<group>"; };
+		66D0E57413E348E400013412 /* nolock.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = nolock.cfg; sourceTree = "<group>"; };
+		66D0E57513E348E400013412 /* plock.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = plock.cfg; sourceTree = "<group>"; };
+		66D0E57713E3490200013412 /* analyze09.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze09.test; sourceTree = "<group>"; };
+		66D0E57813E3490200013412 /* analyze10.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze10.test; sourceTree = "<group>"; };
+		66D0E57913E3490200013412 /* analyze11.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze11.test; sourceTree = "<group>"; };
+		66D0E57A13E3490200013412 /* expr31.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = expr31.test; sourceTree = "<group>"; };
+		66D0E57B13E3490200013412 /* fkey20.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fkey20.test; sourceTree = "<group>"; };
+		66D0E57C13E3490200013412 /* fkey21.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fkey21.test; sourceTree = "<group>"; };
+		66D0E57D13E3490200013412 /* log02.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = log02.test; sourceTree = "<group>"; };
+		66D0E57E13E3490200013412 /* main34.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = main34.test; sourceTree = "<group>"; };
+		66D0E57F13E3490200013412 /* main35.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = main35.test; sourceTree = "<group>"; };
+		66D0E58013E3490200013412 /* malloc06.test_dis */ = {isa = PBXFileReference; lastKnownFileType = text; path = malloc06.test_dis; sourceTree = "<group>"; };
+		66D0E58113E3490200013412 /* name83_01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = name83_01.test; sourceTree = "<group>"; };
+		66D0E58213E3490200013412 /* syscall01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = syscall01.test; sourceTree = "<group>"; };
+		66D0E58313E3490200013412 /* unix01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = unix01.test; sourceTree = "<group>"; };
+		66D0E58413E3490200013412 /* unordered01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = unordered01.test; sourceTree = "<group>"; };
+		66D0E58513E3490200013412 /* uri01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = uri01.test; sourceTree = "<group>"; };
+		66D0E58613E3490200013412 /* uri02.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = uri02.test; sourceTree = "<group>"; };
+		66D0E58713E3490200013412 /* uri03.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = uri03.test; sourceTree = "<group>"; };
+		66D0E58813E3490200013412 /* uri04.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = uri04.test; sourceTree = "<group>"; };
+		66D0E58913E3490200013412 /* vdbemem05.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = vdbemem05.test; sourceTree = "<group>"; };
+		66D0E58A13E3490200013412 /* vtab07.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = vtab07.test; sourceTree = "<group>"; };
+		66D0E58B13E3490200013412 /* vtab08.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = vtab08.test; sourceTree = "<group>"; };
+		66D0E58C13E3490200013412 /* wal32.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal32.test; sourceTree = "<group>"; };
+		66D0E58D13E3490200013412 /* wal33.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal33.test; sourceTree = "<group>"; };
+		66D0E58E13E3490200013412 /* wal34.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal34.test; sourceTree = "<group>"; };
+		66D0E58F13E3490200013412 /* wal35.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal35.test; sourceTree = "<group>"; };
+		66D0E59013E3490200013412 /* wal36.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal36.test; sourceTree = "<group>"; };
+		66D0E59113E3490200013412 /* where27.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where27.test; sourceTree = "<group>"; };
+		66D0E59213E3490200013412 /* where28.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where28.test; sourceTree = "<group>"; };
+		66D0E59313E3491B00013412 /* zipvfs1.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = zipvfs1.cfg; sourceTree = "<group>"; };
+		66D0E59413E3491B00013412 /* zipvfs2.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = zipvfs2.cfg; sourceTree = "<group>"; };
+		66D0E59513E3491B00013412 /* zipvfs3.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = zipvfs3.cfg; sourceTree = "<group>"; };
+		66D0E59613E3492800013412 /* fts4compress01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4compress01.test; sourceTree = "<group>"; };
+		66D0E59713E3492800013412 /* genesis-data.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "genesis-data.tcl"; sourceTree = "<group>"; };
+		66D0E59813E3492800013412 /* genesis1-data.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "genesis1-data.tcl"; sourceTree = "<group>"; };
+		66D0E59913E3492800013412 /* kjv-data.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "kjv-data.tcl"; sourceTree = "<group>"; };
+		66D0E59A13E3492800013412 /* mkftsstress01.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = mkftsstress01.tcl; sourceTree = "<group>"; };
+		66D0E59B13E3492800013412 /* pentateuch-data.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "pentateuch-data.tcl"; sourceTree = "<group>"; };
+		66D0E59C13E3494000013412 /* attach03.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = attach03.test; sourceTree = "<group>"; };
+		66D0E59D13E3494000013412 /* createidx01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = createidx01.test; sourceTree = "<group>"; };
+		66D0E59E13E3494000013412 /* createidx02.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = createidx02.test; sourceTree = "<group>"; };
+		66D0E59F13E3494000013412 /* createidx03.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = createidx03.test; sourceTree = "<group>"; };
+		66D0E5A013E3494000013412 /* pragma21.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma21.test; sourceTree = "<group>"; };
+		66D0E5A113E3494000013412 /* pragma22.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma22.test; sourceTree = "<group>"; };
+		66D0E5A213E3494000013412 /* pragma23.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma23.test; sourceTree = "<group>"; };
+		66D0E5A313E3494000013412 /* pragma24.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma24.test; sourceTree = "<group>"; };
+		66D0E5A413E3494000013412 /* pragma25.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma25.test; sourceTree = "<group>"; };
+		66D0E5A513E3494000013412 /* pragma26.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma26.test; sourceTree = "<group>"; };
+		66D0E5A613E3494000013412 /* pragma27.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma27.test; sourceTree = "<group>"; };
+		66D0E5A713E3494000013412 /* pragma28.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma28.test; sourceTree = "<group>"; };
+		66D0E5AA13E3496A00013412 /* session01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = session01.test; sourceTree = "<group>"; };
+		66D0E5AB13E3496A00013412 /* sessionLib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sessionLib.c; sourceTree = "<group>"; };
+		66D0E5AC13E3497C00013412 /* incrvacuum01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = incrvacuum01.test; sourceTree = "<group>"; };
 		66E5E2F9130484FF00A3FE37 /* test_multiplex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_multiplex.c; sourceTree = "<group>"; };
 		66E5E2FA130484FF00A3FE37 /* test_quota.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_quota.c; sourceTree = "<group>"; };
 		66E5E2FB130484FF00A3FE37 /* test_rtree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_rtree.c; sourceTree = "<group>"; };
@@ -2353,6 +2444,43 @@
 		828362E71307CC0C00054CDE /* vtab06.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = vtab06.test; sourceTree = "<group>"; };
 		828362E81307CC0C00054CDE /* wal30.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wal30.test; sourceTree = "<group>"; };
 		828362E91307CC0C00054CDE /* wal31.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wal31.test; sourceTree = "<group>"; };
+		82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_fuzzer.c; sourceTree = "<group>"; };
+		82838F3913AE9BC600BE9AA2 /* test_multiplex.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = test_multiplex.h; sourceTree = "<group>"; };
+		82838F3A13AE9BC600BE9AA2 /* test_syscall.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_syscall.c; sourceTree = "<group>"; };
+		82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_vfstrace.c; sourceTree = "<group>"; };
+		82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_wholenumber.c; sourceTree = "<group>"; };
+		82838F4613AE9E4300BE9AA2 /* fts3_aux.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fts3_aux.c; sourceTree = "<group>"; };
+		82838F5113AE9F2C00BE9AA2 /* fts3_term.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fts3_term.c; sourceTree = "<group>"; };
+		82838F5413AEACA400BE9AA2 /* 8_3_names.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = 8_3_names.test; sourceTree = "<group>"; };
+		82838F5513AEACA400BE9AA2 /* analyze5.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze5.test; sourceTree = "<group>"; };
+		82838F5613AEACA400BE9AA2 /* analyze6.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze6.test; sourceTree = "<group>"; };
+		82838F5713AEACA400BE9AA2 /* analyze7.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze7.test; sourceTree = "<group>"; };
+		82838F5813AEACA400BE9AA2 /* attach4.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = attach4.test; sourceTree = "<group>"; };
+		82838F5913AEACA400BE9AA2 /* badutf2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = badutf2.test; sourceTree = "<group>"; };
+		82838F5A13AEACA400BE9AA2 /* e_uri.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = e_uri.test; sourceTree = "<group>"; };
+		82838F5B13AEACA400BE9AA2 /* exists.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = exists.test; sourceTree = "<group>"; };
+		82838F5C13AEACA400BE9AA2 /* fkey4.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fkey4.test; sourceTree = "<group>"; };
+		82838F5D13AEACA400BE9AA2 /* fts3aux1.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3aux1.test; sourceTree = "<group>"; };
+		82838F5E13AEACA400BE9AA2 /* fts3comp1.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3comp1.test; sourceTree = "<group>"; };
+		82838F5F13AEACA400BE9AA2 /* fts3conf.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3conf.test; sourceTree = "<group>"; };
+		82838F6013AEACA400BE9AA2 /* fts3fault2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3fault2.test; sourceTree = "<group>"; };
+		82838F6113AEACA400BE9AA2 /* fts3sort.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3sort.test; sourceTree = "<group>"; };
+		82838F6213AEACA400BE9AA2 /* fuzzer1.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuzzer1.test; sourceTree = "<group>"; };
+		82838F6313AEACA400BE9AA2 /* mem5.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = mem5.test; sourceTree = "<group>"; };
+		82838F6413AEACA400BE9AA2 /* oserror.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = oserror.test; sourceTree = "<group>"; };
+		82838F6513AEACA400BE9AA2 /* syscall.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = syscall.test; sourceTree = "<group>"; };
+		82838F6613AEACA400BE9AA2 /* sysfault.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = sysfault.test; sourceTree = "<group>"; };
+		82838F6713AEACA400BE9AA2 /* tkt-2d1a5c67d.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-2d1a5c67d.test"; sourceTree = "<group>"; };
+		82838F6813AEACA400BE9AA2 /* tkt-752e1646fc.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-752e1646fc.test"; sourceTree = "<group>"; };
+		82838F6913AEACA400BE9AA2 /* tkt-b72787b1.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-b72787b1.test"; sourceTree = "<group>"; };
+		82838F6A13AEACA400BE9AA2 /* tkt-f7b4edec.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-f7b4edec.test"; sourceTree = "<group>"; };
+		82838F6B13AEACA400BE9AA2 /* tt3_checkpoint.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tt3_checkpoint.c; sourceTree = "<group>"; };
+		82838F6C13AEACA400BE9AA2 /* unixexcl.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = unixexcl.test; sourceTree = "<group>"; };
+		82838F6D13AEACA400BE9AA2 /* unordered.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = unordered.test; sourceTree = "<group>"; };
+		82838F6E13AEACA400BE9AA2 /* uri.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = uri.test; sourceTree = "<group>"; };
+		82838F6F13AEACA400BE9AA2 /* wal5.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal5.test; sourceTree = "<group>"; };
+		82838F7013AEACA400BE9AA2 /* wal7.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal7.test; sourceTree = "<group>"; };
+		82838F7113AEACA400BE9AA2 /* walro.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = walro.test; sourceTree = "<group>"; };
 		C5114B3C0F4281C200818687 /* libsqlite3.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libsqlite3.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5114B420F42824D00818687 /* IndigoSDK.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = IndigoSDK.xcconfig; path = AppleInternal/XcodeConfig/IndigoSDK.xcconfig; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
@@ -2565,9 +2693,12 @@
 		6670FDB00E561B6F00B315E8 /* fts3 */ = {
 			isa = PBXGroup;
 			children = (
+				66CDA3E813B2BEEF009DDFB2 /* fts3_test.c */,
+				82838F5113AE9F2C00BE9AA2 /* fts3_term.c */,
 				66E5E3301304859300A3FE37 /* fts3speed.tcl */,
 				6670FDB10E561B6F00B315E8 /* fts3.c */,
 				6670FDB20E561B6F00B315E8 /* fts3.h */,
+				82838F4613AE9E4300BE9AA2 /* fts3_aux.c */,
 				660269EF10DAAB3700FFDFE3 /* fts3_expr.c */,
 				6670FDB30E561B6F00B315E8 /* fts3_hash.c */,
 				6670FDB40E561B6F00B315E8 /* fts3_hash.h */,
@@ -2746,6 +2877,7 @@
 		66CD7C3711920129009D068D /* th3_public_source */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E5A913E3496A00013412 /* session */,
 				66593ED0128CB6F3003023FC /* coverage.testplan */,
 				66593ED1128CB6F3003023FC /* memdebug.rc */,
 				66593ED2128CB6F3003023FC /* min.rc */,
@@ -2816,6 +2948,12 @@
 		66CD7C4B11920129009D068D /* cfg */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E57013E348E400013412 /* cG.cfg */,
+				66D0E57113E348E400013412 /* dotlock.cfg */,
+				66D0E57213E348E400013412 /* eintr1.cfg */,
+				66D0E57313E348E400013412 /* excl.cfg */,
+				66D0E57413E348E400013412 /* nolock.cfg */,
+				66D0E57513E348E400013412 /* plock.cfg */,
 				66593ED3128CB708003023FC /* 64k.cfg */,
 				66CD7C4C11920129009D068D /* c1.cfg */,
 				66CD7C4D11920129009D068D /* c2.cfg */,
@@ -2841,6 +2979,34 @@
 		66CD7C6211920129009D068D /* cov1 */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E57713E3490200013412 /* analyze09.test */,
+				66D0E57813E3490200013412 /* analyze10.test */,
+				66D0E57913E3490200013412 /* analyze11.test */,
+				66D0E57A13E3490200013412 /* expr31.test */,
+				66D0E57B13E3490200013412 /* fkey20.test */,
+				66D0E57C13E3490200013412 /* fkey21.test */,
+				66D0E57D13E3490200013412 /* log02.test */,
+				66D0E57E13E3490200013412 /* main34.test */,
+				66D0E57F13E3490200013412 /* main35.test */,
+				66D0E58013E3490200013412 /* malloc06.test_dis */,
+				66D0E58113E3490200013412 /* name83_01.test */,
+				66D0E58213E3490200013412 /* syscall01.test */,
+				66D0E58313E3490200013412 /* unix01.test */,
+				66D0E58413E3490200013412 /* unordered01.test */,
+				66D0E58513E3490200013412 /* uri01.test */,
+				66D0E58613E3490200013412 /* uri02.test */,
+				66D0E58713E3490200013412 /* uri03.test */,
+				66D0E58813E3490200013412 /* uri04.test */,
+				66D0E58913E3490200013412 /* vdbemem05.test */,
+				66D0E58A13E3490200013412 /* vtab07.test */,
+				66D0E58B13E3490200013412 /* vtab08.test */,
+				66D0E58C13E3490200013412 /* wal32.test */,
+				66D0E58D13E3490200013412 /* wal33.test */,
+				66D0E58E13E3490200013412 /* wal34.test */,
+				66D0E58F13E3490200013412 /* wal35.test */,
+				66D0E59013E3490200013412 /* wal36.test */,
+				66D0E59113E3490200013412 /* where27.test */,
+				66D0E59213E3490200013412 /* where28.test */,
 				828362DA1307CC0C00054CDE /* altertable08.test */,
 				828362DB1307CC0C00054CDE /* analyze08.test */,
 				828362DC1307CC0C00054CDE /* main31.test */,
@@ -3522,6 +3688,9 @@
 		66CD7EB11192012A009D068D /* extra1 */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E59313E3491B00013412 /* zipvfs1.cfg */,
+				66D0E59413E3491B00013412 /* zipvfs2.cfg */,
+				66D0E59513E3491B00013412 /* zipvfs3.cfg */,
 				66593EE0128CB746003023FC /* wal3.cfg */,
 				66BA824B1211C593001B8B25 /* dup_where.test */,
 				66BA824C1211C593001B8B25 /* epager01.test */,
@@ -3547,6 +3716,12 @@
 		66CD7EBA1192012A009D068D /* fts */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E59613E3492800013412 /* fts4compress01.test */,
+				66D0E59713E3492800013412 /* genesis-data.tcl */,
+				66D0E59813E3492800013412 /* genesis1-data.tcl */,
+				66D0E59913E3492800013412 /* kjv-data.tcl */,
+				66D0E59A13E3492800013412 /* mkftsstress01.tcl */,
+				66D0E59B13E3492800013412 /* pentateuch-data.tcl */,
 				66CD7EBB1192012A009D068D /* fts3paren0.test */,
 				66CD7EBC1192012A009D068D /* fts3paren1.test */,
 				66CD7EBD1192012A009D068D /* fts3paren2.test */,
@@ -3581,6 +3756,18 @@
 		66CD7ED21192012A009D068D /* req1 */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E59C13E3494000013412 /* attach03.test */,
+				66D0E59D13E3494000013412 /* createidx01.test */,
+				66D0E59E13E3494000013412 /* createidx02.test */,
+				66D0E59F13E3494000013412 /* createidx03.test */,
+				66D0E5A013E3494000013412 /* pragma21.test */,
+				66D0E5A113E3494000013412 /* pragma22.test */,
+				66D0E5A213E3494000013412 /* pragma23.test */,
+				66D0E5A313E3494000013412 /* pragma24.test */,
+				66D0E5A413E3494000013412 /* pragma25.test */,
+				66D0E5A513E3494000013412 /* pragma26.test */,
+				66D0E5A613E3494000013412 /* pragma27.test */,
+				66D0E5A713E3494000013412 /* pragma28.test */,
 				66C2AB13130C888800DEE1A0 /* aggcntx01.test */,
 				66C2AB14130C888800DEE1A0 /* autoext01.test */,
 				66C2AB15130C888800DEE1A0 /* backup01.test */,
@@ -3726,6 +3913,7 @@
 		66CD7EFF1192012A009D068D /* stress */ = {
 			isa = PBXGroup;
 			children = (
+				66D0E5AC13E3497C00013412 /* incrvacuum01.test */,
 				66BA82521211C5B2001B8B25 /* crash005.test */,
 				66BA82531211C5B2001B8B25 /* fts3-03.test */,
 				66CB990A11C9BB95006637CE /* corrupt06.test */,
@@ -3816,6 +4004,15 @@
 			path = www;
 			sourceTree = "<group>";
 		};
+		66D0E5A913E3496A00013412 /* session */ = {
+			isa = PBXGroup;
+			children = (
+				66D0E5AA13E3496A00013412 /* session01.test */,
+				66D0E5AB13E3496A00013412 /* sessionLib.c */,
+			);
+			path = session;
+			sourceTree = "<group>";
+		};
 		6812018D09CFF324007D44CD /* public_source */ = {
 			isa = PBXGroup;
 			children = (
@@ -3833,6 +4030,11 @@
 		6812019009CFF384007D44CD /* src */ = {
 			isa = PBXGroup;
 			children = (
+				82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */,
+				82838F3913AE9BC600BE9AA2 /* test_multiplex.h */,
+				82838F3A13AE9BC600BE9AA2 /* test_syscall.c */,
+				82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */,
+				82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */,
 				66ABFBFA11D493B800404FCA /* wal.c */,
 				66ABFBFB11D493B800404FCA /* wal.h */,
 				6670FB960E5617B200B315E8 /* alter.c */,
@@ -3971,6 +4173,39 @@
 		6812021A09CFF4AD007D44CD /* test */ = {
 			isa = PBXGroup;
 			children = (
+				66CDA3F313B2C7D6009DDFB2 /* fts3auto.test */,
+				66CDA3F413B2C7D6009DDFB2 /* fts3prefix.test */,
+				66CDA3F513B2C7D6009DDFB2 /* tkt-bd484a090c.test */,
+				82838F5413AEACA400BE9AA2 /* 8_3_names.test */,
+				82838F5513AEACA400BE9AA2 /* analyze5.test */,
+				82838F5613AEACA400BE9AA2 /* analyze6.test */,
+				82838F5713AEACA400BE9AA2 /* analyze7.test */,
+				82838F5813AEACA400BE9AA2 /* attach4.test */,
+				82838F5913AEACA400BE9AA2 /* badutf2.test */,
+				82838F5A13AEACA400BE9AA2 /* e_uri.test */,
+				82838F5B13AEACA400BE9AA2 /* exists.test */,
+				82838F5C13AEACA400BE9AA2 /* fkey4.test */,
+				82838F5D13AEACA400BE9AA2 /* fts3aux1.test */,
+				82838F5E13AEACA400BE9AA2 /* fts3comp1.test */,
+				82838F5F13AEACA400BE9AA2 /* fts3conf.test */,
+				82838F6013AEACA400BE9AA2 /* fts3fault2.test */,
+				82838F6113AEACA400BE9AA2 /* fts3sort.test */,
+				82838F6213AEACA400BE9AA2 /* fuzzer1.test */,
+				82838F6313AEACA400BE9AA2 /* mem5.test */,
+				82838F6413AEACA400BE9AA2 /* oserror.test */,
+				82838F6513AEACA400BE9AA2 /* syscall.test */,
+				82838F6613AEACA400BE9AA2 /* sysfault.test */,
+				82838F6713AEACA400BE9AA2 /* tkt-2d1a5c67d.test */,
+				82838F6813AEACA400BE9AA2 /* tkt-752e1646fc.test */,
+				82838F6913AEACA400BE9AA2 /* tkt-b72787b1.test */,
+				82838F6A13AEACA400BE9AA2 /* tkt-f7b4edec.test */,
+				82838F6B13AEACA400BE9AA2 /* tt3_checkpoint.c */,
+				82838F6C13AEACA400BE9AA2 /* unixexcl.test */,
+				82838F6D13AEACA400BE9AA2 /* unordered.test */,
+				82838F6E13AEACA400BE9AA2 /* uri.test */,
+				82838F6F13AEACA400BE9AA2 /* wal5.test */,
+				82838F7013AEACA400BE9AA2 /* wal7.test */,
+				82838F7113AEACA400BE9AA2 /* walro.test */,
 				66E5E3051304853E00A3FE37 /* analyze4.test */,
 				66E5E3061304853E00A3FE37 /* avtrans.test */,
 				66E5E3071304853E00A3FE37 /* capi3e.test */,
@@ -4608,6 +4843,13 @@
 		6812038B09CFF555007D44CD /* tool */ = {
 			isa = PBXGroup;
 			children = (
+				66CDA3EC13B2C7B2009DDFB2 /* build-shell.sh */,
+				66CDA3ED13B2C7B3009DDFB2 /* getlock.c */,
+				66CDA3EE13B2C7B3009DDFB2 /* rollback-test.c */,
+				66CDA3EF13B2C7B3009DDFB2 /* split-sqlite3c.tcl */,
+				66CDA3F013B2C7B3009DDFB2 /* symbols.sh */,
+				66CDA3F113B2C7B3009DDFB2 /* tostr.awk */,
+				66CDA3F213B2C7B3009DDFB2 /* warnings.sh */,
 				8223BBC41238C457007E60C9 /* shell4.test */,
 				8223BBC51238C457007E60C9 /* shell5.test */,
 				8223BBC61238C457007E60C9 /* showwal.c */,
@@ -5077,16 +5319,26 @@
 				66B5C02D0F2070A2008F89D3 /* opcodes.c in Sources */,
 				667D26D30F8B0E4900945875 /* backup.c in Sources */,
 				667D26D40F8B0E4900945875 /* notify.c in Sources */,
-				828D8C081028F45600C4557E /* rtree.c in Sources */,
 				66E6B2F8102A307B00D6B4E7 /* pcache_purgeable.c in Sources */,
 				66287B391084EEFA00AF1277 /* fkey.c in Sources */,
-				6634F13C108D14F900A417C2 /* sqlrr.c in Sources */,
 				660269CE10DAA32C00FFDFE3 /* vdbetrace.c in Sources */,
 				66CB990011C9B926006637CE /* ctime.c in Sources */,
 				66ABFBFC11D493B800404FCA /* test_demovfs.c in Sources */,
 				66ABFBFD11D493B800404FCA /* test_vfs.c in Sources */,
 				66ABFBFE11D493B800404FCA /* wal.c in Sources */,
+				6634F13C108D14F900A417C2 /* sqlrr.c in Sources */,
+				82838F4813AE9E7200BE9AA2 /* fts3.c in Sources */,
+				82838F4913AE9E7200BE9AA2 /* fts3_expr.c in Sources */,
+				82838F4A13AE9E7200BE9AA2 /* fts3_hash.c in Sources */,
+				82838F4B13AE9E7200BE9AA2 /* fts3_icu.c in Sources */,
 				66F1B8F81201017D009C86E8 /* fts3_porter.c in Sources */,
+				82838F4C13AE9E7300BE9AA2 /* fts3_snippet.c in Sources */,
+				82838F4D13AE9E7300BE9AA2 /* fts3_tokenizer.c in Sources */,
+				82838F4E13AE9E7300BE9AA2 /* fts3_tokenizer1.c in Sources */,
+				82838F4F13AE9E7300BE9AA2 /* fts3_write.c in Sources */,
+				82838F4713AE9E4300BE9AA2 /* fts3_aux.c in Sources */,
+				828D8C081028F45600C4557E /* rtree.c in Sources */,
+				82838F5013AE9E9600BE9AA2 /* icu.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5202,6 +5454,12 @@
 				66E5E300130484FF00A3FE37 /* test_quota.c in Sources */,
 				66E5E302130484FF00A3FE37 /* test_rtree.c in Sources */,
 				665520BB1334338F004308A7 /* test_superlock.c in Sources */,
+				82838F3E13AE9BC600BE9AA2 /* test_fuzzer.c in Sources */,
+				82838F4013AE9BC600BE9AA2 /* test_syscall.c in Sources */,
+				82838F4213AE9BC600BE9AA2 /* test_vfstrace.c in Sources */,
+				82838F4413AE9BC600BE9AA2 /* test_wholenumber.c in Sources */,
+				82838F5313AE9F2C00BE9AA2 /* fts3_term.c in Sources */,
+				66CDA3E913B2BEEF009DDFB2 /* fts3_test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5273,6 +5531,12 @@
 				66E5E2FF130484FF00A3FE37 /* test_quota.c in Sources */,
 				66E5E301130484FF00A3FE37 /* test_rtree.c in Sources */,
 				665520BC13343390004308A7 /* test_superlock.c in Sources */,
+				82838F3D13AE9BC600BE9AA2 /* test_fuzzer.c in Sources */,
+				82838F3F13AE9BC600BE9AA2 /* test_syscall.c in Sources */,
+				82838F4113AE9BC600BE9AA2 /* test_vfstrace.c in Sources */,
+				82838F4313AE9BC600BE9AA2 /* test_wholenumber.c in Sources */,
+				82838F5213AE9F2C00BE9AA2 /* fts3_term.c in Sources */,
+				66CDA3EB13B2BF18009DDFB2 /* fts3_test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5348,26 +5612,24 @@
 		1DEB928A08733DD80010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096";
+				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096 -DSQLITE_DEFAULT_JOURNAL_SIZE_LIMIT=32768";
 				APPLE_CORE_TEST_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_DEFAULT_MEMSTATUS=1 -DSQLITE_DEFAULT_PAGE_SIZE=1024 -DSQLITE_PREFER_PROXY_LOCKING=1 -DTH3_COMPATIBILITY=1";
 				APPLE_EXTENSION_CFLAGS = "-DSQLITE_ENABLE_RTREE=1 -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_FTS3_PARENTHESIS=1";
 				APPLE_IPHONE_CFLAGS = "-DTARGET_OS_EMBEDDED=1 -DSQLITE_DEFAULT_CACHE_SIZE=250 -DSQLITE_SUBSTR_COMPATIBILITY=1 -DSQLITE_ENABLE_DATA_PROTECTION=1";
 				APPLE_IPHONE_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500";
 				APPLE_MAC_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				ARCHS = (
-					x86_64,
-					i386,
-				);
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CUSTOM_PRIVATE_HEADERS = "${SRCROOT}/public_source/src/sqlite3_private.h";
 				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				GCC_PREPROCESSOR_DEFINITIONS = "SQLITE_DEBUG=1";
 				"GCC_PREPROCESSOR_DEFINITIONS[sdk=iphonesimulator*][arch=*]" = (
 					"SQLITE_DEBUG=1",
 					"TARGET_IPHONE_SIMULATOR=1",
 				);
 				GCC_VERSION = "";
-				"GCC_VERSION[sdk=macosx*][arch=*]" = 4.2;
+				"GCC_VERSION[sdk=macosx*][arch=*]" = com.apple.compilers.llvm.clang.1_0;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -5390,31 +5652,28 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 ppc ppc64 ppc7400 ppc970 x86_64";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
 			};
 			name = Debug;
 		};
 		1DEB928B08733DD80010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096";
+				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096 -DSQLITE_DEFAULT_JOURNAL_SIZE_LIMIT=32768";
 				APPLE_CORE_TEST_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_DEFAULT_MEMSTATUS=1 -DSQLITE_DEFAULT_PAGE_SIZE=1024 -DSQLITE_PREFER_PROXY_LOCKING=1 -DTH3_COMPATIBILITY=1";
 				APPLE_EXTENSION_CFLAGS = "-DSQLITE_ENABLE_RTREE=1 -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_FTS3_PARENTHESIS=1";
 				APPLE_IPHONE_CFLAGS = "-DTARGET_OS_EMBEDDED=1 -DSQLITE_DEFAULT_CACHE_SIZE=250 -DSQLITE_SUBSTR_COMPATIBILITY=1 -DSQLITE_ENABLE_DATA_PROTECTION=1";
 				APPLE_IPHONE_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500";
 				APPLE_MAC_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				ARCHS = (
-					x86_64,
-					i386,
-				);
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				"ARCHS[sdk=iphoneos*]" = armv7;
 				CUSTOM_PRIVATE_HEADERS = "${SRCROOT}/public_source/src/sqlite3_private.h";
 				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				"GCC_PREPROCESSOR_DEFINITIONS[sdk=iphonesimulator*][arch=*]" = "TARGET_IPHONE_SIMULATOR=1";
 				GCC_VERSION = "";
-				"GCC_VERSION[sdk=macosx*][arch=*]" = 4.2;
+				"GCC_VERSION[sdk=macosx*][arch=*]" = com.apple.compilers.llvm.clang.1_0;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -5437,22 +5696,21 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 ppc ppc64 ppc7400 ppc970 x86_64";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
 			};
 			name = Release;
 		};
 		6606094212A45392009A8812 /* Debug_Embedded */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096";
+				APPLE_CORE_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_OMIT_BUILTIN_TEST=1 -DSQLITE_DEFAULT_MEMSTATUS=0 -DSQLITE_DEFAULT_PAGE_SIZE=4096 -DSQLITE_DEFAULT_JOURNAL_SIZE_LIMIT=32768";
 				APPLE_CORE_TEST_CFLAGS = "$(_APPLE_COMMON_CFLAGS) -DSQLITE_DEFAULT_MEMSTATUS=1 -DSQLITE_DEFAULT_PAGE_SIZE=1024 -DSQLITE_PREFER_PROXY_LOCKING=1 -DTH3_COMPATIBILITY=1";
 				APPLE_EXTENSION_CFLAGS = "-DSQLITE_ENABLE_RTREE=1 -DSQLITE_ENABLE_FTS3=1 -DSQLITE_ENABLE_FTS3_PARENTHESIS=1";
 				APPLE_IPHONE_CFLAGS = "-DTARGET_OS_EMBEDDED=1 -DSQLITE_DEFAULT_CACHE_SIZE=250 -DSQLITE_SUBSTR_COMPATIBILITY=1 -DSQLITE_ENABLE_DATA_PROTECTION=1";
 				APPLE_IPHONE_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				APPLE_MAC_CFLAGS = "-DSQLITE_DEFAULT_CACHE_SIZE=500";
 				APPLE_MAC_TESTFIXTURE_CFLAGS = "-DSQLITE_CORE -DSQLITE_PRIVATE=\"\" -DSQLITE_SERVER=1 -DSQLITE_CRASH_TEST=1 -DSQLITE_NO_SYNC=1 -DSQLITE_TEST=1 -DTCLSH=1 -DSQLITE_DEFAULT_CACHE_SIZE=1000 -DSQLITE_DEBUG=1";
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CUSTOM_PRIVATE_HEADERS = "${SRCROOT}/public_source/src/sqlite3_private.h";
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = "SQLITE_DEBUG=1";
@@ -5461,7 +5719,7 @@
 					"TARGET_IPHONE_SIMULATOR=1",
 				);
 				GCC_VERSION = "";
-				"GCC_VERSION[sdk=macosx*][arch=*]" = 4.2;
+				"GCC_VERSION[sdk=macosx*][arch=*]" = com.apple.compilers.llvm.clang.1_0;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
@@ -5484,8 +5742,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 ppc ppc64 ppc7400 ppc970 x86_64";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
 			};
 			name = Debug_Embedded;
 		};
@@ -5524,7 +5781,6 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALL_PATH = /usr/lib;
 				PRODUCT_NAME = sqlite3;
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 x86_64";
 			};
 			name = Debug_Embedded;
 		};
@@ -5532,7 +5788,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				COPY_PHASE_STRIP = NO;
 				DYLIB_COMPATIBILITY_VERSION = 9.0.0;
 				DYLIB_CURRENT_VERSION = 9.6.0;
@@ -5578,7 +5833,7 @@
 				EXECUTABLE_PREFIX = lib;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				"GCC_VERSION[sdk=macosx*][arch=*]" = "";
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /System/Library/Tcl/sqlite3;
 				PRODUCT_NAME = tclsqlite3;
 			};
@@ -5722,7 +5977,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_MODEL_TUNING = G5;
@@ -5869,7 +6123,7 @@
 				EXECUTABLE_PREFIX = lib;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				"GCC_VERSION[sdk=macosx*][arch=*]" = "";
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /System/Library/Tcl/sqlite3;
 				PRODUCT_NAME = tclsqlite3;
 			};
@@ -5885,7 +6139,7 @@
 				DYLIB_CURRENT_VERSION = 9.6.0;
 				EXECUTABLE_PREFIX = lib;
 				GCC_OPTIMIZATION_LEVEL = s;
-				"GCC_VERSION[sdk=macosx*][arch=*]" = "";
+				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				INSTALL_PATH = /System/Library/Tcl/sqlite3;
 				PRODUCT_NAME = tclsqlite3;
 				ZERO_LINK = NO;
@@ -6110,7 +6364,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_MODEL_TUNING = G5;
@@ -6139,7 +6392,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_MODEL_TUNING = G5;
@@ -6282,7 +6534,6 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				INSTALL_PATH = /usr/lib;
 				PRODUCT_NAME = sqlite3;
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 x86_64";
 			};
 			name = Debug;
 		};
@@ -6302,7 +6553,6 @@
 				PRODUCT_NAME = sqlite3;
 				PUBLIC_HEADERS_FOLDER_PATH = "$(INDIGO_INSTALL_PATH_PREFIX)/usr/include";
 				"STRIPFLAGS[sdk=iphoneos*]" = "-x";
-				VALID_ARCHS = "armv4t armv5 armv6 armv7 xscale i386 x86_64";
 				ZERO_LINK = NO;
 			};
 			name = Release;

@@ -18,7 +18,9 @@ proc wal_file_size {nFrame pgsz} {
 }
 
 proc wal_frame_count {zFile pgsz} {
+  if {[file exists $zFile]==0} { return 0 }
   set f [file size $zFile]
+  if {$f < 32} { return 0 }
   expr {($f - 32) / ($pgsz+24)}
 }
 
@@ -29,6 +31,20 @@ proc wal_cksum_intlist {ckv1 ckv2 intlist} {
     set c1 [expr {($c1 + $v1 + $c2)&0xFFFFFFFF}]
     set c2 [expr {($c2 + $v2 + $c1)&0xFFFFFFFF}]
   }
+}
+
+# If the synchronous mode for the main database of db handle $db
+# is either OFF or NORMAL, return $nRight. Otherwise, if it is
+# FULL, return $nWrite+$nTrans.
+#
+proc wal_frames {db nWrite nTrans} {
+  set nRet $nWrite
+  switch -- [$db one {PRAGMA main.synchronous}] {
+    0 { }
+    1 { }
+    default { incr nRet $nTrans }
+  }
+  set nRet
 }
 
 

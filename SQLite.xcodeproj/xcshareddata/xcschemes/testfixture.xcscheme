@@ -28,6 +28,15 @@
       buildConfiguration = "Debug">
       <Testables>
       </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "6662FB590F40BF890021A4B6"
+            BuildableName = "testfixture"
+            BlueprintName = "testfixture"
+            ReferencedContainer = "container:SQLite.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <CommandLineArguments>
          <CommandLineArgument
             argument = "$(SRCROOT)/public_source/test/veryquick.test"
@@ -42,7 +51,9 @@
       useCustomWorkingDirectory = "YES"
       customWorkingDirectory = "/tmp/"
       buildConfiguration = "Debug"
-      ignoresPersistentStateOnLaunch = "YES">
+      ignoresPersistentStateOnLaunch = "YES"
+      debugDocumentVersioning = "YES"
+      allowLocationSimulation = "YES">
       <BuildableProductRunnable>
          <BuildableReference
             BuildableIdentifier = "primary"
@@ -70,7 +81,8 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       buildConfiguration = "Release"
-      ignoresPersistentStateOnLaunch = "YES">
+      ignoresPersistentStateOnLaunch = "YES"
+      debugDocumentVersioning = "YES">
       <BuildableProductRunnable>
          <BuildableReference
             BuildableIdentifier = "primary"

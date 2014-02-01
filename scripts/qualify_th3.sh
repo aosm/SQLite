@@ -39,6 +39,7 @@ TEST_ALL_FS=${OPT_ON}
 TEST_ALL_ARCH=${OPT_ON}
 PROXY_CONFIGS="${OPT_ON} ${OPT_OFF}"
 SHOWHELP=${OPT_OFF}
+LOG_STDOUT=${OPT_OFF}
 
 for OPTARG in $@; do
     OPT=0
@@ -58,6 +59,7 @@ for OPTARG in $@; do
     if [ "${OPTARG}" == "-proxy" ] ; then OPT=1; PROXY_CONFIGS=${OPT_ON}; fi
     if [ "${OPTARG}" == "-noproxy" ] ; then OPT=1; PROXY_CONFIGS=${OPT_OFF}; fi
     if [ "${OPTARG}" == "-help" ] ; then OPT=1; SHOWHELP=${OPT_ON}; fi
+    if [ "${OPTARG}" == "-stdout" ] ; then OPT=1; LOG_STDOUT=${OPT_ON}; fi
     if [ ${OPT} == 0 ] ; then TESTNAME=${OPTARG}; fi
 done
 
@@ -122,17 +124,23 @@ else
   QUALLOGDIR="${QUALDIR}/logs"
   STARTTIME=`date`
 
-  if [ -d ${QUALLOGDIR} ]; then
-    if [ -f ${QUALLOGDIR}/STARTTIME ]; then
-      PREVSTART=`cat ${QUALLOGDIR}/STARTTIME`
-      echo "Moving previous unit test results to ${QUALLOGDIR}.${PREVSTART}"
-      mv ${QUALLOGDIR} ${QUALLOGDIR}.${PREVSTART} 
-    else
-      echo "Moving previous unit test results to ${QUALLOGDIR}.prev"
-      rm -rf ${QUALLOGDIR}.prev
-      mv ${QUALLOGDIR} ${QUALLOGDIR}.prev 
+  if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+    echo "Logging to STDOUT"
+  else
+    if [ -d ${QUALLOGDIR} ]; then
+      if [ -f ${QUALLOGDIR}/STARTTIME ]; then
+        PREVSTART=`cat ${QUALLOGDIR}/STARTTIME`
+        echo "Moving previous unit test results to ${QUALLOGDIR}.${PREVSTART}"
+        mv ${QUALLOGDIR} ${QUALLOGDIR}.${PREVSTART} 
+      else
+        echo "Moving previous unit test results to ${QUALLOGDIR}.prev"
+        rm -rf ${QUALLOGDIR}.prev
+        mv ${QUALLOGDIR} ${QUALLOGDIR}.prev 
+      fi
+      echo ""
     fi
-    echo ""
+    mkdir -p ${QUALLOGDIR}
+    date "+%Y%m%d_%H%M%S" > ${QUALLOGDIR}/STARTTIME
   fi
 
   echo "Starting qualification tests for sqlite in ${QUALDIR} at ${STARTTIME}"
@@ -146,7 +154,6 @@ else
   echo ""
   echo "  Test: " ${TESTNAME}
 
-  mkdir -p ${QUALLOGDIR}
   if [ ! -d ${MOUNTS} ] ; then 
     mkdir -p ${MOUNTS}
   fi
@@ -204,9 +211,10 @@ GREP_ERRORLINE2=""
 ##
 if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_HFS} == ${OPT_ON} ] ; then 
 
-  HFSTESTDIR=${MOUNTS}/hfs_tests
-  rm -rf ${HFSTESTDIR}
-  mkdir ${HFSTESTDIR}
+  TESTDIR=${MOUNTS}/hfs_tests
+  FS_NAME=hfs
+  rm -rf ${TESTDIR}
+  mkdir ${TESTDIR}
   
   for PROXY in ${PROXY_CONFIGS} ; do
     export SQLITE_FORCE_PROXY_LOCKING=$PROXY
@@ -216,9 +224,13 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_HFS} == ${OPT_ON} ] ; then
     fi
     for ARCH in $TEST_ARCHS ; do
       if [ $CANCEL == ${OPT_OFF} ]; then 
-        echo -n "HFS${PROXY_STATUS} $ARCH unit test... "
-        TESTDIR=${HFSTESTDIR}/test_hfs${PROXY_STATUS}_${ARCH}
-        TESTLOG=${QUALLOGDIR}/test_hfs${PROXY_STATUS}_${ARCH}.log
+        echo -n "${FS_NAME}${PROXY_STATUS} $ARCH unit test... "
+        TESTDIR=${TESTDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}
+        if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+          TESTLOG="/dev/stdout"
+        else
+          TESTLOG="${QUALLOGDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}.log"
+        fi
         mkdir ${TESTDIR}
         if [ $? == "1" ]; then
           echo "Failed to create ${TESTDIR}, skipping (0 errors out of 0 tests)" > ${TESTLOG}
@@ -230,9 +242,11 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_HFS} == ${OPT_ON} ] ; then
           fi
         fi
         echo "done (${TESTLOG})"
-        if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
-        if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
-        echo ""
+        if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+          if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
+          if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
+          echo ""
+        fi
       fi
     done
 
@@ -249,25 +263,27 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_AFP} == ${OPT_ON} ] ; then
   AFPUSER=${REMOTE_USER}
   AFPPASS=${REMOTE_PASSWORD}
   AFPHOSTDIR=${REMOTE_QUALIFICATION_DIR}
-  AFPMNT=${MOUNTS}/afpmnt
-  AFPTESTDIR=${AFPMNT}/${LOCAL_HOSTNAME}/afp_tests
+  FS_NAME=afp
+  FS_MNT=${MOUNTS}/${FS_NAME}mnt
+  TESTDIR=${FS_MNT}/${LOCAL_HOSTNAME}/${FS_NAME}_tests
 
-  if [ ! -d ${AFPMNT} ] ; then 
-    mkdir ${AFPMNT}
+  if [ ! -d ${FS_MNT} ] ; then 
+    mkdir ${FS_MNT}
   fi
-  mount_afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${AFPMNT}
+  echo "mount -t afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${FS_MNT}"
+  mount -t afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
       echo "Tests interrupted, exiting...";
       CANCEL=${OPT_ON}
     else
-      echo "Mount failed, skipping file system"
+      echo "Mount failed, skipping ${FS_NAME} file system"
     fi
   else
-    rm -rf ${AFPTESTDIR}
-    mkdir -p ${AFPTESTDIR}
-
+    rm -rf ${TESTDIR}
+    mkdir ${TESTDIR}
+    
     for PROXY in ${PROXY_CONFIGS} ; do
       export SQLITE_FORCE_PROXY_LOCKING=$PROXY
       export PROXY_STATUS=""
@@ -276,30 +292,35 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_AFP} == ${OPT_ON} ] ; then
       fi
       for ARCH in $TEST_ARCHS ; do
         if [ $CANCEL == ${OPT_OFF} ]; then 
-
-          echo -n "AFP${PROXY_STATUS} $ARCH unit test... "
-          TESTDIR=${AFPTESTDIR}/test_afp${PROXY_STATUS}_${ARCH}
-          TESTLOG=${QUALLOGDIR}/test_afp${PROXY_STATUS}_${ARCH}.log
+          echo -n "${FS_NAME}${PROXY_STATUS} $ARCH unit test... "
+          TESTDIR=${TESTDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}
+          if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+            TESTLOG="/dev/stdout"
+          else
+            TESTLOG="${QUALLOGDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}.log"
+          fi
           mkdir ${TESTDIR}
           if [ $? == "1" ]; then
             echo "Failed to create ${TESTDIR}, skipping (0 errors out of 0 tests)" > ${TESTLOG}
           else
             ( cd ${TESTDIR}; arch -${ARCH} ${TESTEXECUTABLE} ${TESTARGS} > ${TESTLOG} 2>&1; )
+            if [ $? == "130" ]; then
+              echo "Tests interrupted, exiting...";
+              CANCEL=${OPT_ON}
+            fi
           fi
-          if [ $? == "130" ]; then
-            echo "Tests interrupted, exiting...";
-            CANCEL=${OPT_ON}
-          fi
-
           echo "done (${TESTLOG})"
-          if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
-          if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
-          echo ""
+          if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+            if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
+            if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
+            echo ""
+          fi
         fi
       done
+
     done
   
-    umount ${AFPMNT}
+    umount ${FS_MNT}
   fi
 fi
 
@@ -312,25 +333,27 @@ if [ ${CANCEL} == ${OPT_OFF} -a $TEST_SMB == ${OPT_ON} ] ; then
   SMBUSER=${REMOTE_USER}
   SMBPASS=${REMOTE_PASSWORD}
   SMBHOSTDIR=${REMOTE_QUALIFICATION_DIR}
-  SMBMNT=${MOUNTS}/smbmnt
-  SMBTESTDIR=${SMBMNT}/${LOCAL_HOSTNAME}/smb_tests
+  FS_NAME=smb
+  FS_MNT=${MOUNTS}/${FS_NAME}mnt
+  TESTDIR=${FS_MNT}/${LOCAL_HOSTNAME}/${FS_NAME}_tests
 
-  if [ ! -d ${SMBMNT} ] ; then 
-    mkdir ${SMBMNT}
+  if [ ! -d ${FS_MNT} ] ; then 
+    mkdir ${FS_MNT}
   fi
-  mount_smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${SMBMNT}
+  echo "mount -t smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${FS_MNT}"
+  mount -t smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
       echo "Tests interrupted, exiting...";
       CANCEL=${OPT_ON}
     else
-      echo "Mount failed, skipping file system"
+      echo "Mount failed, skipping ${FS_NAME} file system"
     fi
   else
-    rm -rf ${SMBTESTDIR}
-    mkdir -p ${SMBTESTDIR}
-
+    rm -rf ${TESTDIR}
+    mkdir ${TESTDIR}
+    
     for PROXY in ${PROXY_CONFIGS} ; do
       export SQLITE_FORCE_PROXY_LOCKING=$PROXY
       export PROXY_STATUS=""
@@ -339,28 +362,35 @@ if [ ${CANCEL} == ${OPT_OFF} -a $TEST_SMB == ${OPT_ON} ] ; then
       fi
       for ARCH in $TEST_ARCHS ; do
         if [ $CANCEL == ${OPT_OFF} ]; then 
-          echo -n "SMB${PROXY_STATUS} $ARCH unit test... "
-          TESTDIR=${SMBTESTDIR}/test_smb${PROXY_STATUS}_${ARCH}
-          TESTLOG=${QUALLOGDIR}/test_smb${PROXY_STATUS}_${ARCH}.log
+          echo -n "${FS_NAME}${PROXY_STATUS} $ARCH unit test... "
+          TESTDIR=${TESTDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}
+          if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+            TESTLOG="/dev/stdout"
+          else
+            TESTLOG="${QUALLOGDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}.log"
+          fi
           mkdir ${TESTDIR}
           if [ $? == "1" ]; then
             echo "Failed to create ${TESTDIR}, skipping (0 errors out of 0 tests)" > ${TESTLOG}
           else
             ( cd ${TESTDIR}; arch -${ARCH} ${TESTEXECUTABLE} ${TESTARGS} > ${TESTLOG} 2>&1; )
-          fi
-          if [ $? == "130" ]; then
-            echo "Tests interrupted, exiting...";
-            CANCEL=${OPT_ON}
+            if [ $? == "130" ]; then
+              echo "Tests interrupted, exiting...";
+              CANCEL=${OPT_ON}
+            fi
           fi
           echo "done (${TESTLOG})"
-          if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
-          if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
-          echo ""
+          if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+            if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
+            if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
+            echo ""
+          fi
         fi
       done
+
     done
 
-    umount ${SMBMNT}
+    umount ${FS_MNT}
   fi
 fi
 
@@ -372,16 +402,17 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_NFS} == ${OPT_ON} ] ; then
   NFSHOST=${REMOTE_HOST}
   NFSUSER=${REMOTE_USER}
   NFSHOSTDIR=/Volumes/Data/Testing/${REMOTE_QUALIFICATION_DIR}
-  NFSMNT=${MOUNTS}/nfsmnt
-  NFSTESTDIR=${NFSMNT}/${LOCAL_HOSTNAME}/nfs_tests
-
-  if [ ! -d ${NFSMNT} ] ; then 
-    mkdir ${NFSMNT}
-  fi
+  FS_NAME=nfs
+  FS_MNT=${MOUNTS}/${FS_NAME}mnt
+  TESTDIR=${FS_MNT}/${LOCAL_HOSTNAME}/${FS_NAME}_tests
 
   ssh ${NFSUSER}@${NFSHOST} "( chmod a+rw ${NFSHOSTDIR} ; mkdir -p ${NFSHOSTDIR}/${LOCAL_HOSTNAME}; chmod a+rw ${NFSHOSTDIR}/${LOCAL_HOSTNAME} )"
 
-  mount_nfs ${NFSHOST}:${NFSHOSTDIR} ${NFSMNT}
+  if [ ! -d ${FS_MNT} ] ; then 
+    mkdir ${FS_MNT}
+  fi
+  echo "mount -t nfs ${NFSHOST}:${NFSHOSTDIR} ${FS_MNT}"
+  mount -t nfs ${NFSHOST}:${NFSHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
@@ -391,9 +422,9 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_NFS} == ${OPT_ON} ] ; then
       echo "Mount failed, skipping file system"
     fi
   else
-    rm -rf ${NFSTESTDIR}
-    mkdir -p ${NFSTESTDIR}
-
+    rm -rf ${TESTDIR}
+    mkdir ${TESTDIR}
+    
     for PROXY in ${PROXY_CONFIGS} ; do
       export SQLITE_FORCE_PROXY_LOCKING=$PROXY
       export PROXY_STATUS=""
@@ -402,38 +433,45 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_NFS} == ${OPT_ON} ] ; then
       fi
       for ARCH in $TEST_ARCHS ; do
         if [ $CANCEL == ${OPT_OFF} ]; then 
-          echo -n "NFS${PROXY_STATUS} $ARCH unit test... "
-          TESTDIR=${NFSTESTDIR}/test_nfs${PROXY_STATUS}_${ARCH}
-          TESTLOG=${QUALLOGDIR}/test_nfs${PROXY_STATUS}_${ARCH}.log
+          echo -n "${FS_NAME}${PROXY_STATUS} $ARCH unit test... "
+          TESTDIR=${TESTDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}
+          if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+            TESTLOG="/dev/stdout"
+          else
+            TESTLOG="${QUALLOGDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}.log"
+          fi
           mkdir ${TESTDIR}
           if [ $? == "1" ]; then
             echo "Failed to create ${TESTDIR}, skipping (0 errors out of 0 tests)" > ${TESTLOG}
           else
             ( cd ${TESTDIR}; arch -${ARCH} ${TESTEXECUTABLE} ${TESTARGS} > ${TESTLOG} 2>&1; )
-          fi
-          if [ $? == "130" ]; then
-            echo "Tests interrupted, exiting...";
-            CANCEL=${OPT_ON}
+            if [ $? == "130" ]; then
+              echo "Tests interrupted, exiting...";
+              CANCEL=${OPT_ON}
+            fi
           fi
           echo "done (${TESTLOG})"
-          if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
-          if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
-          echo ""
+          if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+            if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
+            if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
+            echo ""
+          fi
         fi
       done
+
     done
 
-    umount ${NFSMNT}
+    umount ${FS_MNT}
   fi
 fi
 
 ##
 ## DOS tests
 ##
-DOSFSNAME=dosfs
-DOSMNT=/Volumes/${DOSFSNAME}
-DOSFSIMAGE=${MOUNTS}/dosfs.dmg
-DOSTESTDIR=${DOSMNT}/dos_tests
+FS_NAME=dos
+FS_MNT=/Volumes/${FS_NAME}
+DOSFSIMAGE=${MOUNTS}/${FS_NAME}.dmg
+TESTDIR=${FS_MNT}/${FS_NAME}_tests
 if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then 
 
   if [ ! -f ${DOSFSIMAGE} ] ; then
@@ -449,10 +487,10 @@ if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then
     fi
   fi
   if [ ${CANCEL} == ${OPT_OFF} -a -f ${DOSFSIMAGE} ]; then
-    if [ ! -d ${DOSMNT} ] ; then
+    if [ ! -d ${FS_MNT} ] ; then
       hdiutil attach ${DOSFSIMAGE}
       ERR=$?
-      if [ ! -d ${DOSMNT} ]; then
+      if [ ! -d ${FS_MNT} ]; then
         if [ ${ERR} == "130" ]; then
           echo "Tests interrupted, exiting...";
           CANCEL=${OPT_ON}
@@ -462,10 +500,10 @@ if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then
       fi
     fi
   fi
-  if [ ${CANCEL} == ${OPT_OFF} -a -d ${DOSMNT} ]; then
-    rm -rf ${DOSTESTDIR}
-    mkdir ${DOSTESTDIR}
-
+  if [ ${CANCEL} == ${OPT_OFF} -a -d ${FS_MNT} ]; then
+    rm -rf ${TESTDIR}
+    mkdir ${TESTDIR}
+    
     for PROXY in 0 ; do
       export SQLITE_FORCE_PROXY_LOCKING=$PROXY
       export PROXY_STATUS=""
@@ -474,28 +512,35 @@ if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then
       fi
       for ARCH in $TEST_ARCHS ; do
         if [ $CANCEL == ${OPT_OFF} ]; then 
-          echo -n "DOS${PROXY_STATUS} $ARCH unit test... "
-          TESTDIR=${DOSTESTDIR}/test_dos${PROXY_STATUS}_${ARCH}
-          TESTLOG=${QUALLOGDIR}/test_dos${PROXY_STATUS}_${ARCH}.log
+          echo -n "${FS_NAME}${PROXY_STATUS} $ARCH unit test... "
+          TESTDIR=${TESTDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}
+          if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+            TESTLOG="/dev/stdout"
+          else
+            TESTLOG="${QUALLOGDIR}/test_${FS_NAME}${PROXY_STATUS}_${ARCH}.log"
+          fi
           mkdir ${TESTDIR}
           if [ $? == "1" ]; then
             echo "Failed to create ${TESTDIR}, skipping (0 errors out of 0 tests)" > ${TESTLOG}
           else
             ( cd ${TESTDIR}; arch -${ARCH} ${TESTEXECUTABLE} ${TESTARGS} > ${TESTLOG} 2>&1; )
-          fi
-          if [ $? == "130" ]; then
-            echo "Tests interrupted, exiting...";
-            CANCEL=${OPT_ON}
+            if [ $? == "130" ]; then
+              echo "Tests interrupted, exiting...";
+              CANCEL=${OPT_ON}
+            fi
           fi
           echo "done (${TESTLOG})"
-          if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
-          if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
-          echo ""
+          if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+            if [ "${GREP_ERRORLINE1} " != " " ]; then grep "${GREP_ERRORLINE1}" ${TESTLOG}; fi;
+            if [ "${GREP_ERRORLINE2} " != " " ]; then grep "${GREP_ERRORLINE2}" ${TESTLOG}; fi;
+            echo ""
+          fi
         fi
       done
+
     done
 
-    hdiutil detach ${DOSMNT}
+    hdiutil detach ${FS_MNT}
   fi
 fi
 
@@ -507,26 +552,32 @@ if [ ${CANCEL} == ${OPT_OFF} ] ; then
   echo "--------------------------------------------------------------------------------"
   ENDTIME=`date`
   OSVERSION=`sw_vers -buildVersion`
-  echo "Unit test qualification completed" > ${QUALLOGDIR}/summary.txt
-  echo "Testfixture based on sqlite version ${SQLITE_VERSION}" >> ${QUALLOGDIR}/summary.txt
-  echo "Qualification performed on system version ${OSVERSION}" >> ${QUALLOGDIR}/summary.txt
-  echo "  Started   ${STARTTIME}" >> ${QUALLOGDIR}/summary.txt
-  echo "  Completed ${ENDTIME}" >> ${QUALLOGDIR}/summary.txt
-  echo "" >> ${QUALLOGDIR}/summary.txt
-  ALLTESTLOGS=`(cd ${QUALLOGDIR}; ls test_*.log)`
-  for TESTLOG in ${ALLTESTLOGS}; do
-    LOGNAME=`echo ${TESTLOG} | sed 's/test_\(.*\)\.log/\1/'`
-    FAILURES=`grep 'FAILED' ${QUALLOGDIR}/${TESTLOG}`
-    ERRORS=`grep 'errors out of' ${QUALLOGDIR}/${TESTLOG}`
-    echo "${LOGNAME}: ${ERRORS}" >> ${QUALLOGDIR}/summary.txt
-    if [ "${FAILURES} " != " " ]; then 
-      echo "  ${FAILURES}" >> ${QUALLOGDIR}/summary.txt
-    fi
-    grep -B 2 'Abort trap' ${QUALLOGDIR}/${TESTLOG} >> ${QUALLOGDIR}/summary.txt
-    echo "" >> ${QUALLOGDIR}/summary.txt
-  done
+  if [ "${LOG_STDOUT}" == "${OPT_ON}" ]; then 
+    SUMMARYLOG="/dev/stdout"
+  else
+    SUMMARYLOG="${QUALLOGDIR}/summary.txt"
+  fi
+  echo "Unit test qualification completed" > ${SUMMARYLOG}
+  echo "Testfixture based on sqlite version ${SQLITE_VERSION}" >> ${SUMMARYLOG}
+  echo "Qualification performed on system version ${OSVERSION}" >> ${SUMMARYLOG}
+  echo "  Started   ${STARTTIME}" >> ${SUMMARYLOG}
+  echo "  Completed ${ENDTIME}" >> ${SUMMARYLOG}
+  echo "" >> ${SUMMARYLOG}
 
-  cp ${QUALLOGDIR}/summary.txt ~/tmp/
-  cat ${QUALLOGDIR}/summary.txt
+  if [ "${LOG_STDOUT}" == "${OPT_OFF}" ]; then 
+    ALLTESTLOGS=`(cd ${QUALLOGDIR}; ls test_*.log)`
+    for TESTLOG in ${ALLTESTLOGS}; do
+      LOGNAME=`echo ${TESTLOG} | sed 's/test_\(.*\)\.log/\1/'`
+      FAILURES=`grep 'FAILED' ${QUALLOGDIR}/${TESTLOG}`
+      ERRORS=`grep 'errors out of' ${QUALLOGDIR}/${TESTLOG}`
+      echo "${LOGNAME}: ${ERRORS}" >> ${SUMMARYLOG}
+      if [ "${FAILURES} " != " " ]; then 
+        echo "  ${FAILURES}" >> ${SUMMARYLOG}
+      fi
+      grep -B 2 'Abort trap' ${QUALLOGDIR}/${TESTLOG} >> ${SUMMARYLOG}
+      echo "" >> ${SUMMARYLOG}
+    done
+    cat ${QUALLOGDIR}/summary.txt
+  fi
 
 fi

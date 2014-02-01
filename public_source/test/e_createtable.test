@@ -989,9 +989,9 @@ do_execsql_test e_createtable-3.7.4 {
   SELECT quote(a), quote(b) FROM t6;
 } {1 2 'X' 3 1 4 'X' 5}
 
-# EVIDENCE-OF: R-18683-56219 If the default value of a column is
-# CURRENT_TIME, CURRENT_DATE or CURRENT_DATETIME, then the value used in
-# the new row is a text representation of the current UTC date and/or
+# EVIDENCE-OF: R-15363-55230 If the default value of a column is
+# CURRENT_TIME, CURRENT_DATE or CURRENT_TIMESTAMP, then the value used
+# in the new row is a text representation of the current UTC date and/or
 # time.
 #
 #     This is difficult to test literally without knowing what time the 
@@ -1379,7 +1379,7 @@ do_createtable_tests 4.10 {
        {0 0 0 {SCAN TABLE t2 USING INDEX sqlite_autoindex_t2_1 (~1000000 rows)}}
 
   3    "EXPLAIN QUERY PLAN SELECT * FROM t2 WHERE b=10 AND c>10"
-       {0 0 0 {SEARCH TABLE t2 USING INDEX sqlite_autoindex_t2_1 (b=? AND c>?) (~3 rows)}}
+       {0 0 0 {SEARCH TABLE t2 USING INDEX sqlite_autoindex_t2_1 (b=? AND c>?) (~2 rows)}}
 }
 
 # EVIDENCE-OF: R-45493-35653 A CHECK constraint may be attached to a

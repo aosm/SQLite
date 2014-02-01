@@ -428,6 +428,13 @@ int sqlite3_config(int op, ...){
       sqlite3GlobalConfig.nHeap = va_arg(ap, int);
       sqlite3GlobalConfig.mnReq = va_arg(ap, int);
 
+      if( sqlite3GlobalConfig.mnReq<1 ){
+        sqlite3GlobalConfig.mnReq = 1;
+      }else if( sqlite3GlobalConfig.mnReq>(1<<12) ){
+        /* cap min request size at 2^12 */
+        sqlite3GlobalConfig.mnReq = (1<<12);
+      }
+
       if( sqlite3GlobalConfig.pHeap==0 ){
         /* If the heap pointer is NULL, then restore the malloc implementation
         ** back to NULL pointers too.  This will cause the malloc to go
@@ -469,6 +476,11 @@ int sqlite3_config(int op, ...){
       typedef void(*LOGFUNC_t)(void*,int,const char*);
       sqlite3GlobalConfig.xLog = va_arg(ap, LOGFUNC_t);
       sqlite3GlobalConfig.pLogArg = va_arg(ap, void*);
+      break;
+    }
+
+    case SQLITE_CONFIG_URI: {
+      sqlite3GlobalConfig.bOpenUri = va_arg(ap, int);
       break;
     }
 
@@ -561,14 +573,42 @@ int sqlite3_db_config(sqlite3 *db, int op, ...){
   va_start(ap, op);
   switch( op ){
     case SQLITE_DBCONFIG_LOOKASIDE: {
-      void *pBuf = va_arg(ap, void*); /* IMP: R-21112-12275 */
+      void *pBuf = va_arg(ap, void*); /* IMP: R-26835-10964 */
       int sz = va_arg(ap, int);       /* IMP: R-47871-25994 */
       int cnt = va_arg(ap, int);      /* IMP: R-04460-53386 */
       rc = setupLookaside(db, pBuf, sz, cnt);
       break;
     }
     default: {
+      static const struct {
+        int op;      /* The opcode */
+        u32 mask;    /* Mask of the bit in sqlite3.flags to set/clear */
+      } aFlagOp[] = {
+        { SQLITE_DBCONFIG_ENABLE_FKEY,    SQLITE_ForeignKeys    },
+        { SQLITE_DBCONFIG_ENABLE_TRIGGER, SQLITE_EnableTrigger  },
+      };
+      unsigned int i;
       rc = SQLITE_ERROR; /* IMP: R-42790-23372 */
+      for(i=0; i<ArraySize(aFlagOp); i++){
+        if( aFlagOp[i].op==op ){
+          int onoff = va_arg(ap, int);
+          int *pRes = va_arg(ap, int*);
+          int oldFlags = db->flags;
+          if( onoff>0 ){
+            db->flags |= aFlagOp[i].mask;
+          }else if( onoff==0 ){
+            db->flags &= ~aFlagOp[i].mask;
+          }
+          if( oldFlags!=db->flags ){
+            sqlite3ExpirePreparedStatements(db);
+          }
+          if( pRes ){
+            *pRes = (db->flags & aFlagOp[i].mask)!=0;
+          }
+          rc = SQLITE_OK;
+          break;
+        }
+      }
       break;
     }
   }
@@ -705,7 +745,8 @@ int sqlite3_close(sqlite3 *db){
   }
   sqlite3_mutex_enter(db->mutex);
 
-  sqlite3ResetInternalSchema(db, 0);
+  /* Force xDestroy calls on all virtual tables */
+  sqlite3ResetInternalSchema(db, -1);
 
   /* If a transaction is open, the ResetInternalSchema() call above
   ** will not have called the xDisconnect() method on any virtual
@@ -748,7 +789,7 @@ int sqlite3_close(sqlite3 *db){
       }
     }
   }
-  sqlite3ResetInternalSchema(db, 0);
+  sqlite3ResetInternalSchema(db, -1);
 
   /* Tell the code in notify.c that the connection no longer holds any
   ** locks and does not require any further unlock-notify callbacks.
@@ -843,7 +884,7 @@ void sqlite3RollbackAll(sqlite3 *db){
 
   if( db->flags&SQLITE_InternChanges ){
     sqlite3ExpirePreparedStatements(db);
-    sqlite3ResetInternalSchema(db, 0);
+    sqlite3ResetInternalSchema(db, -1);
   }
 
   /* Any deferred constraint violations have now been resolved. */
@@ -912,7 +953,7 @@ static int sqliteDefaultBusyCallback(
      { 1, 2, 5, 10, 15, 20, 25, 25,  25,  50,  50, 100 };
   static const u8 totals[] =
      { 0, 1, 3,  8, 18, 33, 53, 78, 103, 128, 178, 228 };
-# define NDELAY (sizeof(delays)/sizeof(delays[0]))
+# define NDELAY ArraySize(delays)
   sqlite3 *db = (sqlite3 *)ptr;
   int timeout = db->busyTimeout;
   int delay, prior;
@@ -1397,18 +1438,32 @@ void *sqlite3_wal_hook(
 #endif
 }
 
-
 /*
-** Checkpoint database zDb. If zDb is NULL, or if the buffer zDb points
-** to contains a zero-length string, all attached databases are 
-** checkpointed.
+** Checkpoint database zDb.
 */
-int sqlite3_wal_checkpoint(sqlite3 *db, const char *zDb){
+int sqlite3_wal_checkpoint_v2(
+  sqlite3 *db,                    /* Database handle */
+  const char *zDb,                /* Name of attached database (or NULL) */
+  int eMode,                      /* SQLITE_CHECKPOINT_* value */
+  int *pnLog,                     /* OUT: Size of WAL log in frames */
+  int *pnCkpt                     /* OUT: Total number of frames checkpointed */
+){
 #ifdef SQLITE_OMIT_WAL
   return SQLITE_OK;
 #else
   int rc;                         /* Return code */
   int iDb = SQLITE_MAX_ATTACHED;  /* sqlite3.aDb[] index of db to checkpoint */
+
+  /* Initialize the output variables to -1 in case an error occurs. */
+  if( pnLog ) *pnLog = -1;
+  if( pnCkpt ) *pnCkpt = -1;
+
+  assert( SQLITE_CHECKPOINT_FULL>SQLITE_CHECKPOINT_PASSIVE );
+  assert( SQLITE_CHECKPOINT_FULL<SQLITE_CHECKPOINT_RESTART );
+  assert( SQLITE_CHECKPOINT_PASSIVE+2==SQLITE_CHECKPOINT_RESTART );
+  if( eMode<SQLITE_CHECKPOINT_PASSIVE || eMode>SQLITE_CHECKPOINT_RESTART ){
+    return SQLITE_MISUSE;
+  }
 
   sqlite3_mutex_enter(db->mutex);
   if( zDb && zDb[0] ){
@@ -1418,13 +1473,23 @@ int sqlite3_wal_checkpoint(sqlite3 *db, const char *zDb){
     rc = SQLITE_ERROR;
     sqlite3Error(db, SQLITE_ERROR, "unknown database: %s", zDb);
   }else{
-    rc = sqlite3Checkpoint(db, iDb);
+    rc = sqlite3Checkpoint(db, iDb, eMode, pnLog, pnCkpt);
     sqlite3Error(db, rc, 0);
   }
   rc = sqlite3ApiExit(db, rc);
   sqlite3_mutex_leave(db->mutex);
   return rc;
 #endif
+}
+
+
+/*
+** Checkpoint database zDb. If zDb is NULL, or if the buffer zDb points
+** to contains a zero-length string, all attached databases are 
+** checkpointed.
+*/
+int sqlite3_wal_checkpoint(sqlite3 *db, const char *zDb){
+  return sqlite3_wal_checkpoint_v2(db, zDb, SQLITE_CHECKPOINT_PASSIVE, 0, 0);
 }
 
 #ifndef SQLITE_OMIT_WAL
@@ -1444,20 +1509,31 @@ int sqlite3_wal_checkpoint(sqlite3 *db, const char *zDb){
 ** If iDb is passed SQLITE_MAX_ATTACHED, then all attached databases are
 ** checkpointed. If an error is encountered it is returned immediately -
 ** no attempt is made to checkpoint any remaining databases.
+**
+** Parameter eMode is one of SQLITE_CHECKPOINT_PASSIVE, FULL or RESTART.
 */
-int sqlite3Checkpoint(sqlite3 *db, int iDb){
+int sqlite3Checkpoint(sqlite3 *db, int iDb, int eMode, int *pnLog, int *pnCkpt){
   int rc = SQLITE_OK;             /* Return code */
   int i;                          /* Used to iterate through attached dbs */
+  int bBusy = 0;                  /* True if SQLITE_BUSY has been encountered */
 
   assert( sqlite3_mutex_held(db->mutex) );
+  assert( !pnLog || *pnLog==-1 );
+  assert( !pnCkpt || *pnCkpt==-1 );
 
   for(i=0; i<db->nDb && rc==SQLITE_OK; i++){
     if( i==iDb || iDb==SQLITE_MAX_ATTACHED ){
-      rc = sqlite3BtreeCheckpoint(db->aDb[i].pBt);
+      rc = sqlite3BtreeCheckpoint(db->aDb[i].pBt, eMode, pnLog, pnCkpt);
+      pnLog = 0;
+      pnCkpt = 0;
+      if( rc==SQLITE_BUSY ){
+        bBusy = 1;
+        rc = SQLITE_OK;
+      }
     }
   }
 
-  return rc;
+  return (rc==SQLITE_OK && bBusy) ? SQLITE_BUSY : rc;
 }
 #endif /* SQLITE_OMIT_WAL */
 
@@ -1710,8 +1786,8 @@ static const int aHardLimit[] = {
 #if SQLITE_MAX_FUNCTION_ARG<0 || SQLITE_MAX_FUNCTION_ARG>1000
 # error SQLITE_MAX_FUNCTION_ARG must be between 0 and 1000
 #endif
-#if SQLITE_MAX_ATTACHED<0 || SQLITE_MAX_ATTACHED>30
-# error SQLITE_MAX_ATTACHED must be between 0 and 30
+#if SQLITE_MAX_ATTACHED<0 || SQLITE_MAX_ATTACHED>62
+# error SQLITE_MAX_ATTACHED must be between 0 and 62
 #endif
 #if SQLITE_MAX_LIKE_PATTERN_LENGTH<1
 # error SQLITE_MAX_LIKE_PATTERN_LENGTH must be at least 1
@@ -1771,15 +1847,246 @@ int sqlite3_limit(sqlite3 *db, int limitId, int newLimit){
   return oldLimit;                     /* IMP: R-53341-35419 */
 }
 #if defined(SQLITE_ENABLE_AUTO_PROFILE)
+void _sqlite_auto_profile(void *aux, const char *sql, u64 ns);
+void _sqlite_auto_trace(void *aux, const char *sql);
 void _sqlite_auto_profile(void *aux, const char *sql, u64 ns) {
 #pragma unused(aux)
 	fprintf(stderr, "Query: %s\n Execution Time: %llu ms\n", sql, ns / 1000000);
 }
 void _sqlite_auto_trace(void *aux, const char *sql) {
-#pragma unused(aux)
 	fprintf(stderr, "TraceSQL(%p): %s\n", aux, sql);
 }
 #endif
+
+/*
+** This function is used to parse both URIs and non-URI filenames passed by the
+** user to API functions sqlite3_open() or sqlite3_open_v2(), and for database
+** URIs specified as part of ATTACH statements.
+**
+** The first argument to this function is the name of the VFS to use (or
+** a NULL to signify the default VFS) if the URI does not contain a "vfs=xxx"
+** query parameter. The second argument contains the URI (or non-URI filename)
+** itself. When this function is called the *pFlags variable should contain
+** the default flags to open the database handle with. The value stored in
+** *pFlags may be updated before returning if the URI filename contains 
+** "cache=xxx" or "mode=xxx" query parameters.
+**
+** If successful, SQLITE_OK is returned. In this case *ppVfs is set to point to
+** the VFS that should be used to open the database file. *pzFile is set to
+** point to a buffer containing the name of the file to open. It is the 
+** responsibility of the caller to eventually call sqlite3_free() to release
+** this buffer.
+**
+** If an error occurs, then an SQLite error code is returned and *pzErrMsg
+** may be set to point to a buffer containing an English language error 
+** message. It is the responsibility of the caller to eventually release
+** this buffer by calling sqlite3_free().
+*/
+int sqlite3ParseUri(
+  const char *zDefaultVfs,        /* VFS to use if no "vfs=xxx" query option */
+  const char *zUri,               /* Nul-terminated URI to parse */
+  unsigned int *pFlags,           /* IN/OUT: SQLITE_OPEN_XXX flags */
+  sqlite3_vfs **ppVfs,            /* OUT: VFS to use */ 
+  char **pzFile,                  /* OUT: Filename component of URI */
+  char **pzErrMsg                 /* OUT: Error message (if rc!=SQLITE_OK) */
+){
+  int rc = SQLITE_OK;
+  unsigned int flags = *pFlags;
+  const char *zVfs = zDefaultVfs;
+  char *zFile;
+  char c;
+  int nUri = sqlite3Strlen30(zUri);
+
+  assert( *pzErrMsg==0 );
+
+  if( ((flags & SQLITE_OPEN_URI) || sqlite3GlobalConfig.bOpenUri) 
+   && nUri>=5 && memcmp(zUri, "file:", 5)==0 
+  ){
+    char *zOpt;
+    int eState;                   /* Parser state when parsing URI */
+    int iIn;                      /* Input character index */
+    int iOut = 0;                 /* Output character index */
+    int nByte = nUri+2;           /* Bytes of space to allocate */
+
+    /* Make sure the SQLITE_OPEN_URI flag is set to indicate to the VFS xOpen 
+    ** method that there may be extra parameters following the file-name.  */
+    flags |= SQLITE_OPEN_URI;
+
+    for(iIn=0; iIn<nUri; iIn++) nByte += (zUri[iIn]=='&');
+    zFile = sqlite3_malloc(nByte);
+    if( !zFile ) return SQLITE_NOMEM;
+
+    /* Discard the scheme and authority segments of the URI. */
+    if( zUri[5]=='/' && zUri[6]=='/' ){
+      iIn = 7;
+      while( zUri[iIn] && zUri[iIn]!='/' ) iIn++;
+
+      if( iIn!=7 && (iIn!=16 || memcmp("localhost", &zUri[7], 9)) ){
+        *pzErrMsg = sqlite3_mprintf("invalid uri authority: %.*s", 
+            iIn-7, &zUri[7]);
+        rc = SQLITE_ERROR;
+        goto parse_uri_out;
+      }
+    }else{
+      iIn = 5;
+    }
+
+    /* Copy the filename and any query parameters into the zFile buffer. 
+    ** Decode %HH escape codes along the way. 
+    **
+    ** Within this loop, variable eState may be set to 0, 1 or 2, depending
+    ** on the parsing context. As follows:
+    **
+    **   0: Parsing file-name.
+    **   1: Parsing name section of a name=value query parameter.
+    **   2: Parsing value section of a name=value query parameter.
+    */
+    eState = 0;
+    while( (c = zUri[iIn])!=0 && c!='#' ){
+      iIn++;
+      if( c=='%' 
+       && sqlite3Isxdigit(zUri[iIn]) 
+       && sqlite3Isxdigit(zUri[iIn+1]) 
+      ){
+        int octet = (sqlite3HexToInt(zUri[iIn++]) << 4);
+        octet += sqlite3HexToInt(zUri[iIn++]);
+
+        assert( octet>=0 && octet<256 );
+        if( octet==0 ){
+          /* This branch is taken when "%00" appears within the URI. In this
+          ** case we ignore all text in the remainder of the path, name or
+          ** value currently being parsed. So ignore the current character
+          ** and skip to the next "?", "=" or "&", as appropriate. */
+          while( (c = zUri[iIn])!=0 && c!='#' 
+              && (eState!=0 || c!='?')
+              && (eState!=1 || (c!='=' && c!='&'))
+              && (eState!=2 || c!='&')
+          ){
+            iIn++;
+          }
+          continue;
+        }
+        c = octet;
+      }else if( eState==1 && (c=='&' || c=='=') ){
+        if( zFile[iOut-1]==0 ){
+          /* An empty option name. Ignore this option altogether. */
+          while( zUri[iIn] && zUri[iIn]!='#' && zUri[iIn-1]!='&' ) iIn++;
+          continue;
+        }
+        if( c=='&' ){
+          zFile[iOut++] = '\0';
+        }else{
+          eState = 2;
+        }
+        c = 0;
+      }else if( (eState==0 && c=='?') || (eState==2 && c=='&') ){
+        c = 0;
+        eState = 1;
+      }
+      zFile[iOut++] = c;
+    }
+    if( eState==1 ) zFile[iOut++] = '\0';
+    zFile[iOut++] = '\0';
+    zFile[iOut++] = '\0';
+
+    /* Check if there were any options specified that should be interpreted 
+    ** here. Options that are interpreted here include "vfs" and those that
+    ** correspond to flags that may be passed to the sqlite3_open_v2()
+    ** method. */
+    zOpt = &zFile[sqlite3Strlen30(zFile)+1];
+    while( zOpt[0] ){
+      int nOpt = sqlite3Strlen30(zOpt);
+      char *zVal = &zOpt[nOpt+1];
+      int nVal = sqlite3Strlen30(zVal);
+
+      if( nOpt==3 && memcmp("vfs", zOpt, 3)==0 ){
+        zVfs = zVal;
+      }else{
+        struct OpenMode {
+          const char *z;
+          int mode;
+        } *aMode = 0;
+        char *zModeType = 0;
+        int mask = 0;
+        int limit = 0;
+
+        if( nOpt==5 && memcmp("cache", zOpt, 5)==0 ){
+          static struct OpenMode aCacheMode[] = {
+            { "shared",  SQLITE_OPEN_SHAREDCACHE },
+            { "private", SQLITE_OPEN_PRIVATECACHE },
+            { 0, 0 }
+          };
+
+          mask = SQLITE_OPEN_SHAREDCACHE|SQLITE_OPEN_PRIVATECACHE;
+          aMode = aCacheMode;
+          limit = mask;
+          zModeType = "cache";
+        }
+        if( nOpt==4 && memcmp("mode", zOpt, 4)==0 ){
+          static struct OpenMode aOpenMode[] = {
+            { "ro",  SQLITE_OPEN_READONLY },
+            { "rw",  SQLITE_OPEN_READWRITE }, 
+            { "rwc", SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE },
+            { 0, 0 }
+          };
+
+          mask = SQLITE_OPEN_READONLY|SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE;
+          aMode = aOpenMode;
+          limit = mask & flags;
+          zModeType = "access";
+        }
+
+        if( aMode ){
+          int i;
+          int mode = 0;
+          for(i=0; aMode[i].z; i++){
+            const char *z = aMode[i].z;
+            if( nVal==sqlite3Strlen30(z) && 0==memcmp(zVal, z, nVal) ){
+              mode = aMode[i].mode;
+              break;
+            }
+          }
+          if( mode==0 ){
+            *pzErrMsg = sqlite3_mprintf("no such %s mode: %s", zModeType, zVal);
+            rc = SQLITE_ERROR;
+            goto parse_uri_out;
+          }
+          if( mode>limit ){
+            *pzErrMsg = sqlite3_mprintf("%s mode not allowed: %s",
+                                        zModeType, zVal);
+            rc = SQLITE_PERM;
+            goto parse_uri_out;
+          }
+          flags = (flags & ~mask) | mode;
+        }
+      }
+
+      zOpt = &zVal[nVal+1];
+    }
+
+  }else{
+    zFile = sqlite3_malloc(nUri+2);
+    if( !zFile ) return SQLITE_NOMEM;
+    memcpy(zFile, zUri, nUri);
+    zFile[nUri] = '\0';
+    zFile[nUri+1] = '\0';
+  }
+
+  *ppVfs = sqlite3_vfs_find(zVfs);
+  if( *ppVfs==0 ){
+    *pzErrMsg = sqlite3_mprintf("no such vfs: %s", zVfs);
+    rc = SQLITE_ERROR;
+  }
+ parse_uri_out:
+  if( rc!=SQLITE_OK ){
+    sqlite3_free(zFile);
+    zFile = 0;
+  }
+  *pFlags = flags;
+  *pzFile = zFile;
+  return rc;
+}
+
 
 /*
 ** This routine does the work of opening a database on behalf of
@@ -1789,12 +2096,14 @@ void _sqlite_auto_trace(void *aux, const char *sql) {
 static int openDatabase(
   const char *zFilename, /* Database filename UTF-8 encoded */
   sqlite3 **ppDb,        /* OUT: Returned database handle */
-  unsigned flags,        /* Operational flags */
+  unsigned int flags,    /* Operational flags */
   const char *zVfs       /* Name of the VFS to use */
 ){
-  sqlite3 *db;
-  int rc;
-  int isThreadsafe;
+  sqlite3 *db;                    /* Store allocated handle here */
+  int rc;                         /* Return code */
+  int isThreadsafe;               /* True for threadsafe connections */
+  char *zOpen = 0;                /* Filename argument to pass to BtreeOpen() */
+  char *zErrMsg = 0;              /* Error message from sqlite3ParseUri() */
 #if SQLITE_ENABLE_DATA_PROTECTION
   int protFlags = flags & SQLITE_OPEN_FILEPROTECTION_MASK;
 #endif
@@ -1821,7 +2130,7 @@ static int openDatabase(
   testcase( (1<<(flags&7))==0x02 ); /* READONLY */
   testcase( (1<<(flags&7))==0x04 ); /* READWRITE */
   testcase( (1<<(flags&7))==0x40 ); /* READWRITE | CREATE */
-  if( ((1<<(flags&7)) & 0x46)==0 ) return SQLITE_MISUSE;
+  if( ((1<<(flags&7)) & 0x46)==0 ) return SQLITE_MISUSE_BKPT;
 
   if( sqlite3GlobalConfig.bCoreMutex==0 ){
     isThreadsafe = 0;
@@ -1843,7 +2152,8 @@ static int openDatabase(
   ** The SQLITE_OPEN_NOMUTEX and SQLITE_OPEN_FULLMUTEX flags were
   ** dealt with in the previous code block.  Besides these, the only
   ** valid input flags for sqlite3_open_v2() are SQLITE_OPEN_READONLY,
-  ** SQLITE_OPEN_READWRITE, and SQLITE_OPEN_CREATE.  Silently mask
+  ** SQLITE_OPEN_READWRITE, SQLITE_OPEN_CREATE, SQLITE_OPEN_SHAREDCACHE,
+  ** SQLITE_OPEN_PRIVATECACHE, and some reserved bits.  Silently mask
   ** off all other flags.
   */
   flags &=  ~( SQLITE_OPEN_DELETEONCLOSE |
@@ -1885,7 +2195,10 @@ static int openDatabase(
   db->autoCommit = 1;
   db->nextAutovac = -1;
   db->nextPagesize = 0;
-  db->flags |= SQLITE_ShortColNames | SQLITE_AutoIndex | SQLITE_CkptFullFSync
+  db->flags |= SQLITE_ShortColNames | SQLITE_AutoIndex | SQLITE_EnableTrigger
+#if SQLITE_DEFAULT_CKPTFULLFSYNC
+                 | SQLITE_CkptFullFSync
+#endif
 #if SQLITE_DEFAULT_FILE_FORMAT<4
                  | SQLITE_LegacyFileFmt
 #endif
@@ -1903,13 +2216,6 @@ static int openDatabase(
 #ifndef SQLITE_OMIT_VIRTUALTABLE
   sqlite3HashInit(&db->aModule);
 #endif
-
-  db->pVfs = sqlite3_vfs_find(zVfs);
-  if( !db->pVfs ){
-    rc = SQLITE_ERROR;
-    sqlite3Error(db, rc, "no such vfs: %s", zVfs);
-    goto opendb_out;
-  }
 
   /* Add the default collation sequence BINARY. BINARY works for both UTF-8
   ** and UTF-16, so add a version for each to avoid any unnecessary
@@ -1933,9 +2239,18 @@ static int openDatabase(
   createCollation(db, "NOCASE", SQLITE_UTF8, SQLITE_COLL_NOCASE, 0,
                   nocaseCollatingFunc, 0);
 
-  /* Open the backend database driver */
+  /* Parse the filename/URI argument. */
   db->openFlags = flags;
-  rc = sqlite3BtreeOpen(zFilename, db, &db->aDb[0].pBt, 0,
+  rc = sqlite3ParseUri(zVfs, zFilename, &flags, &db->pVfs, &zOpen, &zErrMsg);
+  if( rc!=SQLITE_OK ){
+    if( rc==SQLITE_NOMEM ) db->mallocFailed = 1;
+    sqlite3Error(db, rc, zErrMsg ? "%s" : 0, zErrMsg);
+    sqlite3_free(zErrMsg);
+    goto opendb_out;
+  }
+
+  /* Open the backend database driver */
+  rc = sqlite3BtreeOpen(db->pVfs, zOpen, db, &db->aDb[0].pBt, 0,
                         flags | SQLITE_OPEN_MAIN_DB);
   if( rc!=SQLITE_OK ){
     if( rc==SQLITE_IOERR_NOMEM ){
@@ -2028,6 +2343,7 @@ static int openDatabase(
   sqlite3_wal_autocheckpoint(db, SQLITE_DEFAULT_WAL_AUTOCHECKPOINT);
 
 opendb_out:
+  sqlite3_free(zOpen);
   if( db ){
     assert( db->mutex!=0 || isThreadsafe==0 || sqlite3GlobalConfig.bFullMutex==0 );
     sqlite3_mutex_leave(db->mutex);
@@ -2090,7 +2406,7 @@ int sqlite3_open_v2(
   int flags,              /* Flags */
   const char *zVfs        /* Name of VFS module to use */
 ){
-  return openDatabase(filename, ppDb, flags, zVfs);
+  return openDatabase(filename, ppDb, (unsigned int)flags, zVfs);
 }
 
 #ifndef SQLITE_OMIT_UTF16
@@ -2695,10 +3011,43 @@ int sqlite3_test_control(int op, ...){
       break;
     }
 
+    /*   sqlite3_test_control(SQLITE_TESTCTRL_LOCALTIME_FAULT, int onoff);
+    **
+    ** If parameter onoff is non-zero, configure the wrappers so that all
+    ** subsequent calls to localtime() and variants fail. If onoff is zero,
+    ** undo this setting.
+    */
+    case SQLITE_TESTCTRL_LOCALTIME_FAULT: {
+      sqlite3GlobalConfig.bLocaltimeFault = va_arg(ap, int);
+      break;
+    }
+
   }
   va_end(ap);
 #endif /* SQLITE_OMIT_BUILTIN_TEST */
   return rc;
+}
+
+/*
+** This is a utility routine, useful to VFS implementations, that checks
+** to see if a database file was a URI that contained a specific query 
+** parameter, and if so obtains the value of the query parameter.
+**
+** The zFilename argument is the filename pointer passed into the xOpen()
+** method of a VFS implementation.  The zParam argument is the name of the
+** query parameter we seek.  This routine returns the value of the zParam
+** parameter if it exists.  If the parameter does not exist, this routine
+** returns a NULL pointer.
+*/
+const char *sqlite3_uri_parameter(const char *zFilename, const char *zParam){
+  zFilename += sqlite3Strlen30(zFilename) + 1;
+  while( zFilename[0] ){
+    int x = strcmp(zFilename, zParam);
+    zFilename += sqlite3Strlen30(zFilename) + 1;
+    if( x==0 ) return zFilename;
+    zFilename += sqlite3Strlen30(zFilename) + 1;
+  }
+  return 0;
 }
 
 #if (SQLITE_ENABLE_APPLE_SPI>0)

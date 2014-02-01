@@ -46,12 +46,14 @@ close $in
 # of the file.
 #
 set out [open sqlite3.c w]
+# Force the output to use unix line endings, even on Windows.
+fconfigure $out -translation lf
 set today [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S UTC" -gmt 1]
 puts $out [subst \
 {/******************************************************************************
 ** This file is an amalgamation of many separate C source files from SQLite
 ** version $VERSION.  By combining all the individual C code files into this 
-** single large file, the entire code can be compiled as a one translation
+** single large file, the entire code can be compiled as a single translation
 ** unit.  This allows many compilers to do optimizations that would not be
 ** possible if the files were compiled separately.  Performance improvements
 ** of 5% or more are commonly seen when SQLite is compiled as a single
@@ -296,6 +298,7 @@ foreach file {
    notify.c
 
    fts3.c
+   fts3_aux.c
    fts3_expr.c
    fts3_hash.c
    fts3_porter.c

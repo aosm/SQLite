@@ -231,6 +231,7 @@ do_test incrblob3-6.5.4 {
   close $::blob
 } {}
 
+
 # Test that sqlite3_blob_open() handles transient and persistent schema 
 # errors correctly.
 #

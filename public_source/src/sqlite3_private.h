@@ -24,11 +24,6 @@
 ** There is no support for identifying db files encrypted via SEE encryption
 ** currently.  Zero byte files are tested for sqlite locks, but if no sqlite 
 ** locks are present then SQLITE_LOCKSTATE_NOTADB is returned.
-**
-** BUGS: when passing a real process ID if a shared lock is held by two
-** processes and the other process ID is returned by fcntl then
-** _sqlite3_lockstate will return SQLITE_LOCKSTATE_OFF (being tracked by
-** <rdar://problem/7539626> Add PID-specific F_GETLKPID command to fcntl)
 */
 extern int _sqlite3_lockstate(const char *path, pid_t pid);
 
@@ -40,9 +35,27 @@ extern void _sqlite3_purgeEligiblePagerCacheMemory(void);
 
 /*
 ** Pass the SQLITE_TRUNCATE_DATABASE operation code to sqlite3_file_control() 
-** to truncate a database and its associated journal file to zero length.
+** to truncate a database and its associated journal file to zero length.  The 
+** SQLITE_TRUNCATE_* flags represent optional flags to safely initialize an
+** empty database in the place of the truncated database, the flags are passed 
+** into sqlite3_file_control via the third argument using a pointer to an integer
+** configured with the ORed flags.  If the third argument is NULL, the default 
+** behavior is applied and the database file is truncated to zero bytes, a rollback 
+** journal (if present) is unlinked, a WAL journal (if present) is truncated to zero 
+** bytes and the first few bytes of the -shm file is scrambled to trigger existing
+** connections to rebuild the index from the database file contents.
 */
 #define SQLITE_TRUNCATE_DATABASE      101
+#define SQLITE_TRUNCATE_JOURNALMODE_WAL           (0x1<<0)
+#define SQLITE_TRUNCATE_AUTOVACUUM_MASK           (0x3<<2)
+#define SQLITE_TRUNCATE_AUTOVACUUM_OFF            (0x1<<2)
+#define SQLITE_TRUNCATE_AUTOVACUUM_FULL           (0x2<<2)
+#define SQLITE_TRUNCATE_AUTOVACUUM_INCREMENTAL    (0x3<<2)
+#define SQLITE_TRUNCATE_PAGESIZE_MASK             (0x7<<4)
+#define SQLITE_TRUNCATE_PAGESIZE_1024             (0x1<<4)
+#define SQLITE_TRUNCATE_PAGESIZE_2048             (0x2<<4)
+#define SQLITE_TRUNCATE_PAGESIZE_4096             (0x3<<4)
+#define SQLITE_TRUNCATE_PAGESIZE_8192             (0x4<<4)
 
 /*
 ** Pass the SQLITE_REPLACE_DATABASE operation code to sqlite3_file_control() 

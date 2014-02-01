@@ -13,10 +13,6 @@
 */
 #include "sqliteInt.h"
 
-/* Ignore this whole file if pragmas are disabled
-*/
-#if !defined(SQLITE_OMIT_PRAGMA)
-
 /*
 ** Interpret the given string as a safety level.  Return 0 for OFF,
 ** 1 for ON or NORMAL and 2 for FULL.  Return 1 for an empty or 
@@ -49,9 +45,15 @@ static u8 getSafetyLevel(const char *z){
 /*
 ** Interpret the given string as a boolean value.
 */
-static u8 getBoolean(const char *z){
+u8 sqlite3GetBoolean(const char *z){
   return getSafetyLevel(z)&1;
 }
+
+/* The sqlite3GetBoolean() function is used by other modules but the
+** remainder of this file is specific to PRAGMA processing.  So omit
+** the rest of the file if PRAGMAs are omitted from the build.
+*/
+#if !defined(SQLITE_OMIT_PRAGMA)
 
 /*
 ** Interpret the given string as a locking mode value.
@@ -115,7 +117,7 @@ static int invalidateTempStorage(Parse *pParse){
     }
     sqlite3BtreeClose(db->aDb[1].pBt);
     db->aDb[1].pBt = 0;
-    sqlite3ResetInternalSchema(db, 0);
+    sqlite3ResetInternalSchema(db, -1);
   }
   return SQLITE_OK;
 }
@@ -220,7 +222,7 @@ static int flagPragma(Parse *pParse, const char *zLeft, const char *zRight){
             mask &= ~(SQLITE_ForeignKeys);
           }
 
-          if( getBoolean(zRight) ){
+          if( sqlite3GetBoolean(zRight) ){
             db->flags |= mask;
           }else{
             db->flags &= ~mask;
@@ -385,11 +387,11 @@ void sqlite3Pragma(
       sqlite3VdbeChangeP1(v, addr+1, iDb);
       sqlite3VdbeChangeP1(v, addr+6, SQLITE_DEFAULT_CACHE_SIZE);
     }else{
-      int size = sqlite3Atoi(zRight);
-      if( size<0 ) size = -size;
+      int size = sqlite3AbsInt32(sqlite3Atoi(zRight));
       sqlite3BeginWriteOperation(pParse, 0, iDb);
       sqlite3VdbeAddOp2(v, OP_Integer, size, 1);
       sqlite3VdbeAddOp3(v, OP_SetCookie, iDb, BTREE_DEFAULT_CACHE_SIZE, 1);
+      assert( sqlite3SchemaMutexHeld(db, iDb, 0) );
       pDb->pSchema->cache_size = size;
       sqlite3BtreeSetCacheSize(pDb->pBt, pDb->pSchema->cache_size);
     }
@@ -434,7 +436,7 @@ void sqlite3Pragma(
     sqlite3_int64 b = -1;
     assert( pBt!=0 );
     if( zRight ){
-      b = getBoolean(zRight);
+      b = sqlite3GetBoolean(zRight);
     }
     if( pId2->n==0 && b>=0 ){
       int ii;
@@ -563,11 +565,17 @@ void sqlite3Pragma(
       pId2->n = 1;
     }
 #ifdef SQLITE_DEFAULT_WAL_SAFETYLEVEL
-    if (eMode == PAGER_JOURNALMODE_WAL) {
-      /* when entering wal mode, immediately switch the safety_level
-       * so that a query to pragma synchronous returns the correct value
-       */
-      pDb->safety_level = SQLITE_DEFAULT_WAL_SAFETYLEVEL;
+    if( ! SQLITE_DbSafetyLevelIsFixed(pDb->safety_level) ){
+      if( eMode == PAGER_JOURNALMODE_WAL ){
+        /* when entering wal mode, immediately switch the safety_level
+        ** so that a query to pragma synchronous returns the correct value */
+      
+        pDb->safety_level = SQLITE_DEFAULT_WAL_SAFETYLEVEL;
+      }else{
+        /* If the user hasn't overridden the synchronous setting, use the 
+        ** default for non-wal databases */
+        pDb->safety_level = 3;
+      }
     }
 #endif /* SQLITE_DEFAULT_WAL_SAFETYLEVEL */
     for(ii=db->nDb-1; ii>=0; ii--){
@@ -700,12 +708,12 @@ void sqlite3Pragma(
   */
   if( sqlite3StrICmp(zLeft,"cache_size")==0 ){
     if( sqlite3ReadSchema(pParse) ) goto pragma_out;
+    assert( sqlite3SchemaMutexHeld(db, iDb, 0) );
     if( !zRight ){
       i64 cacheSize = pDb->pSchema->cache_size;
       returnSingleInt(pParse, "cache_size", &cacheSize);
     }else{
-      int size = sqlite3Atoi(zRight);
-      if( size<0 ) size = -size;
+      int size = sqlite3AbsInt32(sqlite3Atoi(zRight));
       pDb->pSchema->cache_size = size;
       sqlite3BtreeSetCacheSize(pDb->pBt, pDb->pSchema->cache_size);
     }
@@ -839,14 +847,16 @@ void sqlite3Pragma(
   if( sqlite3StrICmp(zLeft,"synchronous")==0 ){
     if( sqlite3ReadSchema(pParse) ) goto pragma_out;
     if( !zRight ){
-      i64 safetyLevel = pDb->safety_level-1;
+      u8 level = pDb->safety_level;
+      i64 safetyLevel = (i64)(SQLITE_DbSafetyLevelValue(level)-1);
       returnSingleInt(pParse, "synchronous", &safetyLevel);
     }else{
       if( !db->autoCommit ){
         sqlite3ErrorMsg(pParse, 
             "Safety level may not be changed inside a transaction");
       }else{
-        pDb->safety_level = getSafetyLevel(zRight)+1;
+        u8 level = getSafetyLevel(zRight)+1;
+        pDb->safety_level = (level | SQLITE_SAFETYLEVEL_FIXED);
       }
     }
   }else
@@ -1045,7 +1055,7 @@ void sqlite3Pragma(
 #ifndef NDEBUG
   if( sqlite3StrICmp(zLeft, "parser_trace")==0 ){
     if( zRight ){
-      if( getBoolean(zRight) ){
+      if( sqlite3GetBoolean(zRight) ){
         sqlite3ParserTrace(stderr, "parser: ");
       }else{
         sqlite3ParserTrace(0, 0);
@@ -1059,7 +1069,7 @@ void sqlite3Pragma(
   */
   if( sqlite3StrICmp(zLeft, "case_sensitive_like")==0 ){
     if( zRight ){
-      sqlite3RegisterLikeFunctions(db, getBoolean(zRight));
+      sqlite3RegisterLikeFunctions(db, sqlite3GetBoolean(zRight));
     }
   }else
 
@@ -1124,6 +1134,7 @@ void sqlite3Pragma(
       ** Begin by filling registers 2, 3, ... with the root pages numbers
       ** for all tables and indices in the database.
       */
+      assert( sqlite3SchemaMutexHeld(db, iDb, 0) );
       pTbls = &db->aDb[i].pSchema->tblHash;
       for(x=sqliteHashFirst(pTbls); x; x=sqliteHashNext(x)){
         Table *pTab = sqliteHashData(x);
@@ -1189,7 +1200,7 @@ void sqlite3Pragma(
           addr = sqlite3VdbeAddOpList(v, ArraySize(idxErr), idxErr);
           sqlite3VdbeChangeP4(v, addr+1, "rowid ", P4_STATIC);
           sqlite3VdbeChangeP4(v, addr+3, " missing from index ", P4_STATIC);
-          sqlite3VdbeChangeP4(v, addr+4, pIdx->zName, P4_STATIC);
+          sqlite3VdbeChangeP4(v, addr+4, pIdx->zName, P4_TRANSIENT);
           sqlite3VdbeJumpHere(v, addr+9);
           sqlite3VdbeJumpHere(v, jmp2);
         }
@@ -1219,7 +1230,7 @@ void sqlite3Pragma(
           sqlite3VdbeJumpHere(v, addr+4);
           sqlite3VdbeChangeP4(v, addr+6, 
                      "wrong # of entries in index ", P4_STATIC);
-          sqlite3VdbeChangeP4(v, addr+7, pIdx->zName, P4_STATIC);
+          sqlite3VdbeChangeP4(v, addr+7, pIdx->zName, P4_TRANSIENT);
         }
       } 
     }
@@ -1398,13 +1409,29 @@ void sqlite3Pragma(
 
 #ifndef SQLITE_OMIT_WAL
   /*
-  **   PRAGMA [database.]wal_checkpoint
+  **   PRAGMA [database.]wal_checkpoint = passive|full|restart
   **
   ** Checkpoint the database.
   */
   if( sqlite3StrICmp(zLeft, "wal_checkpoint")==0 ){
+    int iBt = (pId2->z?iDb:SQLITE_MAX_ATTACHED);
+    int eMode = SQLITE_CHECKPOINT_PASSIVE;
+    if( zRight ){
+      if( sqlite3StrICmp(zRight, "full")==0 ){
+        eMode = SQLITE_CHECKPOINT_FULL;
+      }else if( sqlite3StrICmp(zRight, "restart")==0 ){
+        eMode = SQLITE_CHECKPOINT_RESTART;
+      }
+    }
     if( sqlite3ReadSchema(pParse) ) goto pragma_out;
-    sqlite3VdbeAddOp3(v, OP_Checkpoint, pId2->z?iDb:SQLITE_MAX_ATTACHED, 0, 0);
+    sqlite3VdbeSetNumCols(v, 3);
+    pParse->nMem = 3;
+    sqlite3VdbeSetColName(v, 0, COLNAME_NAME, "busy", SQLITE_STATIC);
+    sqlite3VdbeSetColName(v, 1, COLNAME_NAME, "log", SQLITE_STATIC);
+    sqlite3VdbeSetColName(v, 2, COLNAME_NAME, "checkpointed", SQLITE_STATIC);
+
+    sqlite3VdbeAddOp3(v, OP_Checkpoint, iBt, eMode, 1);
+    sqlite3VdbeAddOp2(v, OP_ResultRow, 1, 3);
   }else
 
   /*
@@ -1508,7 +1535,7 @@ void sqlite3Pragma(
   */
 #ifndef SQLITE_OMIT_PAGER_PRAGMAS
   if( db->autoCommit ){
-    sqlite3BtreeSetSafetyLevel(pDb->pBt, pDb->safety_level,
+    sqlite3BtreeSetSafetyLevel(pDb->pBt, SQLITE_DbSafetyLevelValue(pDb->safety_level),
                (db->flags&SQLITE_FullFSync)!=0,
                (db->flags&SQLITE_CkptFullFSync)!=0);
   }

@@ -154,6 +154,7 @@ if {[info exists cmdlinearg]==0} {
   #   --backtrace=N
   #   --binarylog=N
   #   --soak=N
+  #   --start=[$permutation:]$testfile
   #
   set cmdlinearg(soft-heap-limit)    0
   set cmdlinearg(maxerror)        1000
@@ -161,6 +162,7 @@ if {[info exists cmdlinearg]==0} {
   set cmdlinearg(backtrace)         10
   set cmdlinearg(binarylog)          0
   set cmdlinearg(soak)               0
+  set cmdlinearg(start)             "" 
 
   set leftover [list]
   foreach a $argv {
@@ -194,6 +196,16 @@ if {[info exists cmdlinearg]==0} {
       {^-+soak=.+$} {
         foreach {dummy cmdlinearg(soak)} [split $a =] break
         set ::G(issoak) $cmdlinearg(soak)
+      }
+      {^-+start=.+$} {
+        foreach {dummy cmdlinearg(start)} [split $a =] break
+
+        set ::G(start:file) $cmdlinearg(start)
+        if {[regexp {(.*):(.*)} $cmdlinearg(start) -> s.perm s.file]} {
+          set ::G(start:permutation) ${s.perm}
+          set ::G(start:file)        ${s.file}
+        }
+        if {$::G(start:file) == ""} {unset ::G(start:file)}
       }
       default {
         lappend leftover $a
@@ -367,6 +379,31 @@ proc do_test {name cmd expected} {
   flush stdout
 }
 
+proc filepath_normalize {p} {
+  # test cases should be written to assume "unix"-like file paths
+  if {$::tcl_platform(platform)!="unix"} {
+    # lreverse*2 as a hack to remove any unneeded {} after the string map
+    lreverse [lreverse [string map {\\ /} [regsub -nocase -all {[a-z]:[/\\]+} $p {/}]]]
+  } {
+    set p
+  }
+}
+proc do_filepath_test {name cmd expected} {
+  uplevel [list do_test $name [
+    subst -nocommands { filepath_normalize [ $cmd ] }
+  ] [filepath_normalize $expected]]
+}
+
+proc realnum_normalize {r} {
+  # different TCL versions display floating point values differently.
+  string map {1.#INF inf Inf inf .0e e} [regsub -all {(e[+-])0+} $r {\1}]
+}
+proc do_realnum_test {name cmd expected} {
+  uplevel [list do_test $name [
+    subst -nocommands { realnum_normalize [ $cmd ] }
+  ] [realnum_normalize $expected]]
+}
+
 proc fix_testname {varname} {
   upvar $varname testname
   if {[info exists ::testprefix] 
@@ -378,11 +415,11 @@ proc fix_testname {varname} {
     
 proc do_execsql_test {testname sql {result {}}} {
   fix_testname testname
-  uplevel do_test $testname [list "execsql {$sql}"] [list [list {*}$result]]
+  uplevel do_test [list $testname] [list "execsql {$sql}"] [list [list {*}$result]]
 }
 proc do_catchsql_test {testname sql result} {
   fix_testname testname
-  uplevel do_test $testname [list "catchsql {$sql}"] [list $result]
+  uplevel do_test [list $testname] [list "catchsql {$sql}"] [list $result]
 }
 proc do_eqp_test {name sql res} {
   uplevel do_execsql_test $name [list "EXPLAIN QUERY PLAN $sql"] [list $res]
@@ -762,6 +799,17 @@ proc integrity_check {name {db db}} {
   ifcapable integrityck {
     do_test $name [list execsql {PRAGMA integrity_check} $db] {ok}
   }
+}
+
+
+# Return true if the SQL statement passed as the second argument uses a
+# statement transaction.
+#
+proc sql_uses_stmt {db sql} {
+  set stmt [sqlite3_prepare $db $sql -1 dummy]
+  set uses [uses_stmt_journal $stmt]
+  sqlite3_finalize $stmt
+  return $uses
 }
 
 proc fix_ifcapable_expr {expr} {
@@ -1366,6 +1414,15 @@ proc slave_test_script {script} {
 
 proc slave_test_file {zFile} {
   set tail [file tail $zFile]
+
+  if {[info exists ::G(start:permutation)]} {
+    if {[permutation] != $::G(start:permutation)} return
+    unset ::G(start:permutation)
+  }
+  if {[info exists ::G(start:file)]} {
+    if {$tail != $::G(start:file) && $tail!="$::G(start:file).test"} return
+    unset ::G(start:file)
+  }
 
   # Remember the value of the shared-cache setting. So that it is possible
   # to check afterwards that it was not modified by the test script.

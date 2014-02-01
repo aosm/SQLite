@@ -21,6 +21,11 @@ mkdir ${BDIR}
 CHANGEDFILES=""
 REPLACEDFILES=""
 
+FORCE=0
+for OPTARG in $@; do
+  if [ "${OPTARG}" == "-force" ] ; then FORCE=1; fi
+done
+
 for DFILE in ${SYNC_DFILES}; do
   DFILEDIFF=`diff -N -q --ignore-matching-lines="This amalgamation was generated on" ${BDIR}/${DFILE} ${DDIR}/${DFILE}`
   if [ "${DFILEDIFF} " != " " ]; then
@@ -35,15 +40,17 @@ else
 
   for DFILE in ${CHANGEDFILES}; do
     
-    echo -n "Replace ${DFILE}? (y/n/d [n]) "
-    read
-    if [ "${REPLY} " == "d " ]; then
-      RAWDIFF=`echo "diff ${DDIR}/${DFILE} ${BDIR}/${DFILE}"; diff -N --ignore-matching-lines="This amalgamation was generated on" ${DDIR}/${DFILE} ${BDIR}/${DFILE}`
-      echo "${RAWDIFF}" | less
-      echo -n "Replace ${DFILE}? (y/n [n]) "
+    if [ ${FORCE} == 0 ]; then
+      echo -n "Replace ${DFILE}? (y/n/d [n]) "
       read
+      if [ "${REPLY} " == "d " ]; then
+        RAWDIFF=`echo "diff ${DDIR}/${DFILE} ${BDIR}/${DFILE}"; diff -N --ignore-matching-lines="This amalgamation was generated on" ${DDIR}/${DFILE} ${BDIR}/${DFILE}`
+        echo "${RAWDIFF}" | less
+        echo -n "Replace ${DFILE}? (y/n [n]) "
+        read
+      fi
     fi
-    if [ "${REPLY} " == "y " ]; then
+    if [ ${FORCE} == 1 -o "${REPLY} " == "y " ]; then
       cp ${BDIR}/${DFILE} ${DDIR}/${DFILE}
       REPLACEDFILES="${REPLACEDFILES} ${DFILE}"
     fi

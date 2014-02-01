@@ -278,7 +278,8 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_AFP} == ${OPT_ON} ] ; then
   if [ ! -d ${FS_MNT} ] ; then 
     mkdir ${FS_MNT}
   fi
-  mount_afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${FS_MNT}
+  echo "mount -t afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${FS_MNT}"
+  mount -t afp afp://${AFPUSER}:${AFPPASS}@${AFPHOST}/${AFPHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
@@ -347,7 +348,8 @@ if [ ${CANCEL} == ${OPT_OFF} -a $TEST_SMB == ${OPT_ON} ] ; then
   if [ ! -d ${FS_MNT} ] ; then 
     mkdir ${FS_MNT}
   fi
-  mount_smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${FS_MNT}
+  echo "mount -t smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${FS_MNT}"
+  mount -t smbfs //${SMBUSER}:${SMBPASS}@${SMBHOST}/${SMBHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
@@ -417,7 +419,8 @@ if [ ${CANCEL} == ${OPT_OFF} -a ${TEST_NFS} == ${OPT_ON} ] ; then
   if [ ! -d ${FS_MNT} ] ; then 
     mkdir ${FS_MNT}
   fi
-  mount_nfs ${NFSHOST}:${NFSHOSTDIR} ${FS_MNT}
+  echo "mount -t nfs ${NFSHOST}:${NFSHOSTDIR} ${FS_MNT}"
+  mount -t nfs ${NFSHOST}:${NFSHOSTDIR} ${FS_MNT}
   ERR=$?
   if [ ${ERR} != "0" ]; then
     if [ ${ERR} == "130" ]; then
@@ -480,7 +483,7 @@ TESTDIR=${FS_MNT}/${FS_NAME}_tests
 if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then 
 
   if [ ! -f ${DOSFSIMAGE} ] ; then
-    hdiutil create -megabytes 100 -fs MS-DOS ${DOSFSIMAGE} -volname ${DOSFSNAME}
+    hdiutil create -megabytes 100 -fs MS-DOS ${DOSFSIMAGE} -volname ${FS_NAME}
     ERR=$?
     if [ ${ERR} != "0" ]; then
       if [ ${ERR} == "130" ]; then

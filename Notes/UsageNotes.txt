@@ -26,3 +26,10 @@ Enable SQLite SPI
 
 Enable purgable cache
 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1
+
+#
+# Checking into fossil
+#
+sanitize -- avoid radar references, purgeable cache source
+configure/make (enable manifest via: fossil set manifest on)
+- 

@@ -747,6 +747,7 @@ static int purgeableCacheReleaseChunk(PurgeablePCache *pCache, int iChunk, Purge
     if( xChunk!=-1 ){
       pChunk = pCache->apChunks[xChunk];
       err = vm_purgable_control(mach_task_self(), (vm_address_t)pChunk, VM_PURGABLE_SET_STATE, &state);
+      /* fprintf(stderr, "marking pChunk[%d] (%p - %p, sz=%d KB) as volatile [%d]\n", iChunk, pChunk, pChunk + PURGEABLE_CHUNK_SIZE, (int)PURGEABLE_CHUNK_SIZE/1024, err); */
     }
 #endif /* OMIT_VM_PURGABLE */
 
@@ -831,6 +832,7 @@ static int purgeableCacheRetainChunk(
 #endif /* PURGEABLE_CHUNK_QUEUE_SIZE */
     if( xChunk!=-1 ){
       err = vm_purgable_control(mach_task_self(), (vm_address_t)pChunk, VM_PURGABLE_SET_STATE, &state);
+      /* fprintf(stderr, "marking pChunk[%d] (%p - %p, sz=%d KB) as nonvolatile [%d]\n", iChunk, pChunk, pChunk + PURGEABLE_CHUNK_SIZE, (int)PURGEABLE_CHUNK_SIZE/1024, err); */
       if( pcache_force_purge>0 ){
         state = VM_PURGABLE_EMPTY;
       }
@@ -994,12 +996,24 @@ static int purgeableCachePurgePendingChunks(PurgeablePCache *pCache){
     iChunk = pCache->aChunkQueue[j];
     if( iChunk != -1){
       pChunk = pCache->apChunks[iChunk];
+      state = VM_PURGABLE_VOLATILE;
+      /*fprintf(stderr, "marking pChunk[%d] (%p - %p, sz=%d KB) as purgeable(%d)\n", j, pChunk, pChunk + PURGEABLE_CHUNK_SIZE, (int)PURGEABLE_CHUNK_SIZE/1024, state); */
       int err = vm_purgable_control(task, (vm_address_t)pChunk, VM_PURGABLE_SET_STATE, &state);
       /* log errors, but don't give up. */
-      if( err!=0 ){
+      if( err!=KERN_SUCCESS ){
         fprintf(stderr, "error marking chunk volatile %d\n", errno);
         break; /* failing to mark a chunk volatile means clean up and give up */
       }
+#if (TRACE_PURGEABLE_PCACHE > 3)
+      int getState;
+      err = vm_purgable_control(task, (vm_address_t)pChunk, VM_PURGABLE_GET_STATE, &getState);
+      if( err!=KERN_SUCCESS ){
+        fprintf(stderr, "error getting chunk status %d\n", errno);
+        break; /* failing to mark a chunk volatile means clean up and give up */
+      } else {
+        fprintf(stderr, "got chunk status: %d=%s\n", getState, ((getState & VM_PURGABLE_STATE_MASK ) == VM_PURGABLE_VOLATILE) ? "volatile" : "not volatile");
+      }
+#endif
       pCache->aChunkQueue[j] = -1; 
       nChunks++;
     }
@@ -1013,11 +1027,14 @@ static int purgeableCachePurgePendingChunks(PurgeablePCache *pCache){
 #endif /* (!defined(OMIT_VM_PURGABLE) && (PURGEABLE_CHUNK_QUEUE_SIZE>0) */
 
 #if (SQLITE_ENABLE_APPLE_SPI>0)
-
+void _sqlite3_purgeEligiblePagerCacheMemory(void);
 void _sqlite3_purgeEligiblePagerCacheMemory(void){
 # if (!defined(OMIT_VM_PURGABLE)) && (PURGEABLE_CHUNK_QUEUE_SIZE>0)
   int go = OSAtomicCompareAndSwap32Barrier(0, 1, 
        (volatile int32_t *) &_purgeableCache_globalPurge); 
+#if (TRACE_PURGEABLE_PCACHE > 0)
+  fprintf(stderr, "[PCACHE] .JETSAM purge unpinned page chunks\n");
+#endif
   if( go ){
     PPCacheHdr *pCacheHdr = NULL;
     purgeableCacheEnterMutex();
