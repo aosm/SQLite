@@ -24669,7 +24669,10 @@ static int unixOpen(
     ((unixFile*)pFile)->fsFlags |= SQLITE_FSFLAGS_IS_HFSPLUS;
   } else if (0 == strncmp("msdos", fsInfo.f_fstypename, 5)) {
     ((unixFile*)pFile)->fsFlags |= SQLITE_FSFLAGS_IS_MSDOS;
+  } else if (0 == strncmp("exfat", fsInfo.f_fstypename, 5)) {
+    ((unixFile*)pFile)->fsFlags |= SQLITE_FSFLAGS_IS_MSDOS;
   }
+  
 #endif
   
   if( isAutoProxy && (zPath!=NULL) && (!noLock) ){
