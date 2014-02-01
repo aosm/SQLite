@@ -59,7 +59,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "$(SRCROOT)/public_source/test/apple_custom.test"
+            argument = "$(SRCROOT)/public_source/test/walpersist.test"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

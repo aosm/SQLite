@@ -71,7 +71,7 @@ do_test incrvacuum2-1.4 {
 #
 ifcapable attach {
   do_test incrvacuum2-2.1 {
-    file delete -force test2.db test2.db-journal
+    forcedelete test2.db test2.db-journal
     execsql {
       ATTACH DATABASE 'test2.db' AS aux;
       PRAGMA aux.auto_vacuum=incremental;
@@ -135,6 +135,8 @@ do_test incrvacuum2-3.2 {
 
 integrity_check incrvacuum2-3.3
 
+if ![wal_is_ok] { finish_test; return }
+
 ifcapable wal {
   # At one point, when a specific page was being extracted from the b-tree
   # free-list (e.g. during an incremental-vacuum), all trunk pages that
@@ -194,7 +196,7 @@ ifcapable wal {
   do_test 4.2.1 {
     execsql { PRAGMA wal_checkpoint }
     file size test.db-wal
-  } [wal_file_size [wal_frames db 2 1] 512]
+  } [expr {32+2*(512+24)}]
 
   do_test 4.3 {
     db close
@@ -208,7 +210,7 @@ ifcapable wal {
       if {$newsz>$maxsz} {set maxsz $newsz}
     }
     set maxsz 
-  } [wal_file_size [wal_frames db 3 1] 512]
+  } [expr {32+3*(512+24)}]
 }
 
 finish_test

@@ -30,6 +30,21 @@ do_test apple_custom-0.0 {
   lsort [ list $isIOS $isMacOS ]
 } {0 1}
 
+
+#
+# apple_custom tests cover the apple customize behaviors and truncate 
+# and replace file control SPI
+#
+# apple_custom-1.*    binary compatibility tests for substr (iOS only)
+# apple_custom-2.*    SQLITE_FCNTL_TRUNCATE_DATABASE tests
+# apple_custom-3.*    SQLITE_FCNTL_REPLACE_DATABASE tests
+# apple_custom-4.*    SQLITE_FCNTL_TRUNCATE_DATABASE tests (wal mode)
+# apple_custom-5.*    SQLITE_FCNTL_REPLACE_DATABASE tests (wal mode)
+# apple_custom-6.*    write lock on src db prevents REPLACE
+# apple_custom-7.*    test replace for switching journal modes wal/delete
+# apple_custom-8.*    default synchronous settings for wal & delete mode
+#
+
 # iOS specific tests
 if { $isIOS } {
   do_test apple_custom-1.1 {
@@ -41,7 +56,7 @@ if { $isIOS } {
 
 # MacOS specific tests
 if { $isMacOS } {
-  do_test apple_custom-2.1 {
+  do_test apple_custom-1.2 {
     execsql {
       select substr("face", 0, 1), substr("face", 1, 1);
     } 
@@ -49,13 +64,13 @@ if { $isMacOS } {
 }
 
 # Cross platform tests
-do_test apple_custom-truncate-1.1 {
+do_test apple_custom-2.1 {
   db close
   sqlite3 db test_control_truncate.db
   file_control_truncate_test db 0
 } {}
 
-do_test apple_custom-truncate-1.2 {
+do_test apple_custom-2.2 {
   db close
   sqlite3 db test_control_truncate.db
   execsql {
@@ -66,7 +81,7 @@ do_test apple_custom-truncate-1.2 {
   catchsql {SELECT * FROM test1}
 } {1 {no such table: test1}}
 
-do_test apple_custom-truncate-1.3.0 {
+do_test apple_custom-2.3.0 {
   db close
   sqlite3 db2 test_control_truncate.db
   execsql { CREATE TABLE test1(a,b,c) } db2
@@ -79,7 +94,7 @@ do_test apple_custom-truncate-1.3.0 {
   set msg
 } {5}
 
-do_test apple_custom-truncate-1.3.1 {
+do_test apple_custom-2.3.1 {
   execsql {
     COMMIT;
   }
@@ -87,10 +102,37 @@ do_test apple_custom-truncate-1.3.1 {
   execsql { SELECT * FROM test1 } db
 } {1 2 3}
 
-# truncate a 'corrupt' database
-do_test apple_custom-truncate-1.4.0 {
+do_test apple_custom-2.3.2 {
   db close
+  sqlite3 db2 test_control_truncate.db
+  execsql { CREATE TABLE test2(a,b,c) } db2
+  sqlite3 db test_control_truncate.db
+  execsql {
+    BEGIN;
+    INSERT INTO test2 VALUES(1,2,3);
+  }
+  catch { file_control_truncate_test db2 128 } msg
+  set msg
+} {}
 
+do_test apple_custom-2.3.3 {
+  execsql {
+    ROLLBACK;
+  }
+  db2 close
+  execsql { SELECT * FROM sqlite_master } db
+} {}
+db close
+
+
+# truncate a 'corrupt' database
+do_test apple_custom-2.4.0 {
+  sqlite3 db test_control_truncate.db
+  execsql { 
+    CREATE TABLE test1(a,b,c);
+    INSERT INTO test1 VALUES(1,2,3);
+  }
+  db close
   set fd [open test_control_truncate.db r+]
   fconfigure $fd -translation binary
   seek $fd 63
@@ -101,7 +143,7 @@ do_test apple_custom-truncate-1.4.0 {
   catchsql {SELECT * FROM test1}
 } {1 {database disk image is malformed}}
 
-do_test apple_custom-truncate-1.4.1 {
+do_test apple_custom-2.4.1 {
   file_control_truncate_test db 0
   execsql {
     CREATE TABLE x(y);
@@ -111,7 +153,7 @@ do_test apple_custom-truncate-1.4.1 {
 } {99}
 
 # truncate a 'notadb' database
-do_test apple_custom-truncate-1.4.2 {
+do_test apple_custom-2.4.2 {
   db close
 
   set fd [open test_control_truncate.db r+]
@@ -124,7 +166,7 @@ do_test apple_custom-truncate-1.4.2 {
   catchsql {SELECT * FROM test1}
 } {1 {file is encrypted or is not a database}}
 
-do_test apple_custom-truncate-1.4.3 {
+do_test apple_custom-2.4.3 {
   file_control_truncate_test db 0
   execsql {
     CREATE TABLE x(y);
@@ -141,16 +183,24 @@ do_test apple_custom-truncate-1.4.3 {
 # SQLITE_TRUNCATE_PAGESIZE_2048             (32)
 # SQLITE_TRUNCATE_PAGESIZE_4096             (48)
 # SQLITE_TRUNCATE_PAGESIZE_8192             (64)
+# SQLITE_TRUNCATE_FORCE                     (128)
 
-do_test apple_custom-truncate-1.5.0 {
-  file_control_truncate_test db 1
-  db close
-  sqlite3 db test_control_truncate.db
-  execsql {
-    pragma journal_mode;
+
+ifcapable wal {
+  if { [wal_is_ok] } {
+     
+    do_test apple_custom-2.5.0 {
+      file_control_truncate_test db 1
+      db close
+      sqlite3 db test_control_truncate.db
+      execsql {
+        pragma journal_mode;
+      }
+    } {wal}
+    
   }
-} {wal}
-do_test apple_custom-truncate-1.5.1 {
+}
+do_test apple_custom-2.5.1 {
   file_control_truncate_test db 8
   db close
   sqlite3 db test_control_truncate.db
@@ -158,7 +208,7 @@ do_test apple_custom-truncate-1.5.1 {
     pragma auto_vacuum;
   }
 } {1}
-do_test apple_custom-truncate-1.5.2 {
+do_test apple_custom-2.5.2 {
   file_control_truncate_test db 12
   db close
   sqlite3 db test_control_truncate.db
@@ -166,7 +216,7 @@ do_test apple_custom-truncate-1.5.2 {
     pragma auto_vacuum;
   }
 } {2}
-do_test apple_custom-truncate-1.5.3 {
+do_test apple_custom-2.5.3 {
   file_control_truncate_test db 16
   db close
   sqlite3 db test_control_truncate.db
@@ -174,7 +224,7 @@ do_test apple_custom-truncate-1.5.3 {
     pragma page_size;
   }
 } {1024}
-do_test apple_custom-truncate-1.5.4 {
+do_test apple_custom-2.5.4 {
   file_control_truncate_test db 32
   db close
   sqlite3 db test_control_truncate.db
@@ -182,7 +232,7 @@ do_test apple_custom-truncate-1.5.4 {
     pragma page_size;
   }
 } {2048}
-do_test apple_custom-truncate-1.5.5 {
+do_test apple_custom-2.5.5 {
   file_control_truncate_test db 48
   db close
   sqlite3 db test_control_truncate.db
@@ -190,7 +240,7 @@ do_test apple_custom-truncate-1.5.5 {
     pragma page_size;
   }
 } {4096}
-do_test apple_custom-truncate-1.5.6 {
+do_test apple_custom-2.5.6 {
   file_control_truncate_test db 64
   db close
   sqlite3 db test_control_truncate.db
@@ -199,6 +249,83 @@ do_test apple_custom-truncate-1.5.6 {
   }
 } {8192}
 
+ifcapable wal {
+  if { [wal_is_ok] } {
+
+    do_test apple_custom-2.5.7 {
+      file_control_truncate_test db 41
+      db close
+      sqlite3 db test_control_truncate.db
+      execsql {
+        pragma page_size;
+      }
+    } {2048}
+    do_test apple_custom-2.5.8 {
+      execsql {
+        pragma auto_vacuum;
+      }
+    } {1}
+    do_test apple_custom-2.5.9 {
+      execsql {
+        pragma journal_mode;
+      }
+    } {wal}
+  
+  }
+}
+
+do_test apple_custom-2.6.0 {
+  file_control_truncate_test db 0
+  db close
+  sqlite3 db test_control_truncate.db
+  execsql {
+    pragma journal_mode;
+  }
+} {delete}
+do_test apple_custom-2.6.1 {
+  sqlite3 db2 test_control_truncate.db
+  execsql {
+    begin;
+    create table x(y);
+  } db2
+  catch { file_control_truncate_test db 1 } msg
+  db close
+  db2 close
+  sqlite3 db test_control_truncate.db
+  execsql {
+    pragma journal_mode;
+  }
+} {delete}
+
+ifcapable wal {
+  if { [wal_is_ok] } {
+
+    do_test apple_custom-2.6.2 {
+      sqlite3 db2 test_control_truncate.db
+      execsql {
+        create table test(a,b,c);
+        begin;
+        create table x(y);
+      } db2
+      file_control_truncate_test db 129
+      execsql { rollback } db2
+      db2 close
+      db close
+      sqlite3 db test_control_truncate.db
+      execsql {
+        select * from sqlite_master;
+      }
+    } {}
+    do_test apple_custom-2.6.3 {
+      db close
+      sqlite3 db test_control_truncate.db
+      execsql {
+        pragma journal_mode;
+      }
+    } {wal}
+    
+  }
+}
 
 db close
 file delete -force test_control_truncate.db
@@ -211,13 +338,13 @@ db2 close
 file delete -force test_control_replace_src.db
 file delete -force test_control_replace_dst.db
 
-do_test apple_custom-replace-1.1 {
+do_test apple_custom-3.1 {
   sqlite3 db test_control_replace_src.db
   sqlite3 db2 test_control_replace_dst.db
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-1.2 {
+do_test apple_custom-3.2 {
   execsql {
     CREATE TABLE test1(a,b,c);
     INSERT INTO test1 VALUES(1,2,3);
@@ -230,7 +357,7 @@ do_test apple_custom-replace-1.2 {
 } {1 2 3}
 
 # read lock on dst blocks replace
-do_test apple_custom-replace-1.3.0 {
+do_test apple_custom-3.3.0 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     BEGIN;
@@ -241,7 +368,7 @@ do_test apple_custom-replace-1.3.0 {
 } {5}
 
 # read lock on src is OK
-do_test apple_custom-replace-1.3.1 {
+do_test apple_custom-3.3.1 {
   execsql {
     COMMIT;
   } db3
@@ -258,7 +385,7 @@ do_test apple_custom-replace-1.3.1 {
 db3 close
 
 # replace a 'corrupt' database
-do_test apple_custom-replace-1.4.0 {
+do_test apple_custom-3.4.0 {
   db2 close
 
   set fd [open test_control_replace_dst.db r+]
@@ -271,12 +398,12 @@ do_test apple_custom-replace-1.4.0 {
   catchsql {SELECT * FROM test1} db2
 } {1 {database disk image is malformed}}
 
-do_test apple_custom-replace-1.4.1 {
+do_test apple_custom-3.4.1 {
   sqlite3 db3 test_control_replace_corrupt.db
   file_control_replace_test db3 db2
 } {}
 
-do_test apple_custom-replace-1.4.2 {
+do_test apple_custom-3.4.2 {
   db3 close
   sqlite3 db3 test_control_replace_corrupt.db
   catchsql {SELECT * FROM test1} db3
@@ -286,16 +413,16 @@ file_control_truncate_test db3 0
 db3 close
 file delete -force test_control_replace_corrupt.db
 
-do_test apple_custom-replace-1.4.3 {
+do_test apple_custom-3.4.3 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-1.4.4 {
+do_test apple_custom-3.4.4 {
   execsql {select * from test1} db2
 } {1 2 3 4 5 6}
 
 # replace a 'notadb' database
-do_test apple_custom-replace-1.4.5 {
+do_test apple_custom-3.4.5 {
   db2 close
 
   set fd [open test_control_replace_dst.db r+]
@@ -308,12 +435,12 @@ do_test apple_custom-replace-1.4.5 {
   catchsql {SELECT * FROM test1} db2
 } {1 {file is encrypted or is not a database}}
 
-do_test apple_custom-replace-1.4.6 {
+do_test apple_custom-3.4.6 {
   sqlite3 db3 test_control_replace_notadb.db
   file_control_replace_test db3 db2
 } {}
 
-do_test apple_custom-replace-1.4.7 {
+do_test apple_custom-3.4.7 {
   db3 close
   sqlite3 db3 test_control_replace_notadb.db
   catchsql {SELECT * FROM test1} db3
@@ -323,11 +450,11 @@ file_control_truncate_test db3 0
 db3 close
 file delete -force test_control_replace_notadb.db
 
-do_test apple_custom-replace-1.4.8 {
+do_test apple_custom-3.4.8 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-1.4.9 {
+do_test apple_custom-3.4.9 {
   execsql {select * from test1} db2
 } {1 2 3 4 5 6}
 
@@ -348,7 +475,7 @@ if { ![wal_is_ok] } {
 }
 
 # Cross platform tests
-do_test apple_custom-truncate-2.1 {
+do_test apple_custom-4.1 {
   sqlite3 db test_control_truncate.db
   execsql {
     PRAGMA journal_mode=wal;
@@ -356,7 +483,7 @@ do_test apple_custom-truncate-2.1 {
   file_control_truncate_test db 0
 } {}
 
-do_test apple_custom-truncate-2.2 {
+do_test apple_custom-4.2 {
   db close
   sqlite3 db test_control_truncate.db
   execsql {
@@ -368,7 +495,7 @@ do_test apple_custom-truncate-2.2 {
   catchsql {SELECT * FROM test1}
 } {1 {no such table: test1}}
 
-do_test apple_custom-truncate-2.3.0 {
+do_test apple_custom-4.3.0 {
   db close
   sqlite3 db2 test_control_truncate.db
   execsql { 
@@ -385,7 +512,7 @@ do_test apple_custom-truncate-2.3.0 {
   set msg
 } {5}
 
-do_test apple_custom-truncate-2.3.1 {
+do_test apple_custom-4.3.1 {
   execsql {
     COMMIT;
   }
@@ -394,9 +521,14 @@ do_test apple_custom-truncate-2.3.1 {
 } {1 2 3}
 
 # truncate a 'corrupt' database
-do_test apple_custom-truncate-2.4.0 {
+do_test apple_custom-4.4.0 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db 0
+  }
   db close
-
+  #set dbpath [exec pwd]
+  #puts "Check the path $dbpath"
+  #exec sleep 20
   set fd [open test_control_truncate.db r+]
   fconfigure $fd -translation binary
   seek $fd 63
@@ -407,7 +539,7 @@ do_test apple_custom-truncate-2.4.0 {
   catchsql {SELECT * FROM test1}
 } {1 {database disk image is malformed}}
 
-do_test apple_custom-truncate-2.4.1 {
+do_test apple_custom-4.4.1 {
   file_control_truncate_test db 0
   execsql {
     PRAGMA journal_mode=wal;
@@ -418,7 +550,10 @@ do_test apple_custom-truncate-2.4.1 {
 } {wal 99}
 
 # truncate a 'notadb' database
-do_test apple_custom-truncate-2.4.2 {
+do_test apple_custom-4.4.2 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db 0
+  }
   db close
 
   set fd [open test_control_truncate.db r+]
@@ -431,7 +566,7 @@ do_test apple_custom-truncate-2.4.2 {
   catchsql {SELECT * FROM test1}
 } {1 {file is encrypted or is not a database}}
 
-do_test apple_custom-truncate-2.4.3 {
+do_test apple_custom-4.4.3 {
   file_control_truncate_test db 0
   execsql {
   PRAGMA journal_mode=wal;
@@ -445,7 +580,7 @@ do_test apple_custom-truncate-2.4.3 {
 db close
 file delete -force test_control_truncate.db
 
-do_test apple_custom-replace-2.1 {
+do_test apple_custom-5.1 {
   sqlite3 db test_control_replace_src.db
   execsql {
     PRAGMA journal_mode=wal;
@@ -457,7 +592,7 @@ do_test apple_custom-replace-2.1 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-2.2 {
+do_test apple_custom-5.2 {
   execsql {
     PRAGMA journal_mode=wal;
     CREATE TABLE test1(a,b,c);
@@ -471,7 +606,7 @@ do_test apple_custom-replace-2.2 {
 } {1 2 3}
 
 # read lock on dst blocks replace
-do_test apple_custom-replace-2.3.0 {
+do_test apple_custom-5.3.0 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     PRAGMA journal_mode=wal;
@@ -483,7 +618,7 @@ do_test apple_custom-replace-2.3.0 {
 } {5}
 
 # read lock on src is OK
-do_test apple_custom-replace-2.3.1 {
+do_test apple_custom-5.3.1 {
   execsql {
     COMMIT;
   } db3
@@ -504,7 +639,10 @@ do_test apple_custom-replace-2.3.1 {
 db3 close
 
 # replace a 'corrupt' database
-do_test apple_custom-replace-2.4.0 {
+do_test apple_custom-5.4.0 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db2 0
+  }
   db2 close
 
   set fd [open test_control_replace_dst.db r+]
@@ -517,12 +655,15 @@ do_test apple_custom-replace-2.4.0 {
   catchsql {SELECT * FROM test1} db2
 } {1 {database disk image is malformed}}
 
-do_test apple_custom-replace-2.4.1 {
+do_test apple_custom-5.4.1 {
   sqlite3 db3 test_control_replace_corrupt.db
   file_control_replace_test db3 db2
 } {}
 
-do_test apple_custom-replace-2.4.2 {
+do_test apple_custom-5.4.2 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db3 0
+  }
   db3 close
   sqlite3 db3 test_control_replace_corrupt.db
   catchsql {SELECT * FROM test1} db3
@@ -537,11 +678,11 @@ db2 close
 sqlite3 db2 test_control_replace_dst.db
 sqlite3 db test_control_replace_src.db
 
-do_test apple_custom-replace-2.4.3 {
+do_test apple_custom-5.4.3 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-2.4.4 {
+do_test apple_custom-5.4.4 {
   db2 close
   sqlite3 db2 test_control_replace_dst.db
   execsql {
@@ -551,7 +692,10 @@ do_test apple_custom-replace-2.4.4 {
 } {wal 1 2 3 4 5 6}
 
 # replace a 'notadb' database
-do_test apple_custom-replace-2.4.5 {
+do_test apple_custom-5.4.5 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db2 0
+  }
   db2 close
 
   set fd [open test_control_replace_dst.db r+]
@@ -564,12 +708,15 @@ do_test apple_custom-replace-2.4.5 {
   catchsql {SELECT * FROM test1} db2
 } {1 {file is encrypted or is not a database}}
 
-do_test apple_custom-replace-2.4.6 {
+do_test apple_custom-5.4.6 {
   sqlite3 db3 test_control_replace_notadb.db
   file_control_replace_test db3 db2
 } {}
 
-do_test apple_custom-replace-2.4.7 {
+do_test apple_custom-5.4.7 {
+  ifcapable enable_persist_wal {
+    file_control_persist_wal db3 0
+  }
   db3 close
   sqlite3 db3 test_control_replace_notadb.db
   catchsql {SELECT * FROM test1} db3
@@ -579,11 +726,11 @@ file_control_truncate_test db3 0
 db3 close
 file delete -force test_control_replace_notadb.db
 
-do_test apple_custom-replace-2.4.6 {
+do_test apple_custom-5.4.6 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-2.4.7 {
+do_test apple_custom-5.4.7 {
   execsql {
     pragma journal_mode;
     select * from test1
@@ -600,7 +747,7 @@ db2 close
 file delete -force test_control_replace_src.db
 file delete -force test_control_replace_dst.db
 
-do_test apple_custom-replace-3.1 {
+do_test apple_custom-6.1 {
   sqlite3 db test_control_replace_src.db
   execsql {
     PRAGMA journal_mode=delete;
@@ -612,20 +759,20 @@ do_test apple_custom-replace-3.1 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-3.1.1 {
+do_test apple_custom-6.1.1 {
   execsql {
     PRAGMA journal_mode;
   } db
 } {delete}
 
-do_test apple_custom-replace-3.1.2 {
+do_test apple_custom-6.1.2 {
   execsql {
     select * from sqlite_master;
     PRAGMA journal_mode;
   } db2
 } {delete}
 
-do_test apple_custom-replace-3.1.3 {
+do_test apple_custom-6.1.3 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     select * from sqlite_master;
@@ -634,7 +781,7 @@ do_test apple_custom-replace-3.1.3 {
 } {delete}
 db3 close
 
-do_test apple_custom-replace-3.2 {
+do_test apple_custom-6.2 {
   execsql {
     PRAGMA journal_mode=wal;
   } db2
@@ -651,7 +798,7 @@ do_test apple_custom-replace-3.2 {
 } {1 2 3}
 
 # read lock on dst blocks replace
-do_test apple_custom-replace-3.3.0 {
+do_test apple_custom-6.3.0 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     PRAGMA journal_mode=wal;
@@ -663,7 +810,7 @@ do_test apple_custom-replace-3.3.0 {
 } {5}
 
 # read lock on src is OK
-do_test apple_custom-replace-3.3.1 {
+do_test apple_custom-6.3.1 {
   execsql {
     COMMIT;
   } db3
@@ -686,7 +833,8 @@ db2 close
 file delete -force test_control_replace_src.db
 file delete -force test_control_replace_dst.db
 
-do_test apple_custom-replace-4.1 {
+
+do_test apple_custom-7.1 {
   sqlite3 db test_control_replace_src.db
   execsql {
     PRAGMA journal_mode=wal;
@@ -698,13 +846,13 @@ do_test apple_custom-replace-4.1 {
   file_control_replace_test db2 db
 } {}
 
-do_test apple_custom-replace-4.1.1 {
+do_test apple_custom-7.1.1 {
   execsql {
     PRAGMA journal_mode;
   } db
 } {wal}
 
-do_test apple_custom-replace-4.1.2 {
+do_test apple_custom-7.1.2 {
   execsql {
     select * from sqlite_master;
     PRAGMA journal_mode;
@@ -712,7 +860,7 @@ do_test apple_custom-replace-4.1.2 {
 } {wal}
 db2 close
 
-do_test apple_custom-replace-4.1.3 {
+do_test apple_custom-7.1.3 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     select * from sqlite_master;
@@ -722,7 +870,7 @@ do_test apple_custom-replace-4.1.3 {
 db3 close
 
 # copy a wal-mode db over a delete-mode db
-do_test apple_custom-replace-4.2.0 {
+do_test apple_custom-7.2.0 {
   sqlite3 db2 test_control_replace_dst.db
   execsql {
     PRAGMA journal_mode=delete;
@@ -731,7 +879,7 @@ do_test apple_custom-replace-4.2.0 {
     SELECT * FROM test2
   } db2
 } {delete -200 -201 -202}
-do_test apple_custom-replace-4.2.1 {
+do_test apple_custom-7.2.1 {
   execsql {
     PRAGMA journal_mode=wal;
     CREATE TABLE test1(a,b,c);
@@ -739,16 +887,16 @@ do_test apple_custom-replace-4.2.1 {
     SELECT * from test1;
   }
 } {wal 1 2 3}
-do_test apple_custom-replace-4.2.2 {
+do_test apple_custom-7.2.2 {
   file_control_replace_test db2 db
 } {} 
-do_test apple_custom-replace-4.2.3 {
+do_test apple_custom-7.2.3 {
   execsql {
     INSERT INTO test1 VALUES(4,5,6);
     SELECT * FROM test1;
   }
 } {1 2 3 4 5 6}
-do_test apple_custom-replace-4.2.4 {
+do_test apple_custom-7.2.4 {
   db2 close
   sqlite3 db2 test_control_replace_dst.db  
   execsql {
@@ -758,7 +906,7 @@ do_test apple_custom-replace-4.2.4 {
 } {wal 1 2 3}
 
 # read lock on dst blocks replace
-do_test apple_custom-replace-4.3.0 {
+do_test apple_custom-7.3.0 {
   sqlite3 db3 test_control_replace_dst.db
   execsql {
     BEGIN;
@@ -769,7 +917,7 @@ do_test apple_custom-replace-4.3.0 {
 } {5}
 
 # read lock on src is OK
-do_test apple_custom-replace-4.3.1 {
+do_test apple_custom-7.3.1 {
   execsql {
     COMMIT;
   } db3
@@ -782,9 +930,6 @@ do_test apple_custom-replace-4.3.1 {
   file_control_replace_test db2 db
   execsql { SELECT * FROM test1 } db
 } {1 2 3 4 5 6}
-
-# add test to ensure a write lock on src blocks replace (needs to be out of 
-# process)
 
 db3 close
 file_control_truncate_test db 0
@@ -798,27 +943,27 @@ ifcapable wal {
   if { [wal_is_ok] && $sqlite_options(default_wal_safetylevel) } {
     
     sqlite3 db test.db
-    do_test apple_custom-walsafetylevel-2.1 {
+    do_test apple_custom-8.1 {
       execsql {
         pragma synchronous;
       }
     } {2}
     
-    do_test apple_custom-walsafetylevel-2.2 {
+    do_test apple_custom-8.2 {
       execsql {
         pragma journal_mode=wal;
         pragma synchronous;
       }
     } {wal 1}
 
-    do_test apple_custom-walsafetylevel-2.3 {
+    do_test apple_custom-8.3 {
       execsql {
         pragma journal_mode=delete;
         pragma synchronous;
       }
     } {delete 2}
 
-    do_test apple_custom-walsafetylevel-2.4 {
+    do_test apple_custom-8.4 {
       execsql {
         pragma synchronous=2;
         create table x(y);
@@ -828,7 +973,7 @@ ifcapable wal {
     } {wal 2}
 
     sqlite3 db2 test.db
-    do_test apple_custom-walsafetylevel-2.5 {
+    do_test apple_custom-8.5 {
       execsql {
         pragma synchronous=2;
         insert into x values (1);

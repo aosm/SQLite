@@ -177,7 +177,7 @@ static int writeDbFile(CrashFile *p, u8 *z, i64 iAmt, i64 iOff){
     iSkip = 512;
   }
   if( (iAmt-iSkip)>0 ){
-    rc = sqlite3OsWrite(p->pRealFile, &z[iSkip], iAmt-iSkip, iOff+iSkip);
+    rc = sqlite3OsWrite(p->pRealFile, &z[iSkip], (int)(iAmt-iSkip), iOff+iSkip);
   }
   return rc;
 }
@@ -306,8 +306,8 @@ static int writeListSync(CrashFile *pFile, int isCrash){
       }
       case 3: {               /* Trash sectors */
         u8 *zGarbage;
-        int iFirst = (pWrite->iOffset/g.iSectorSize);
-        int iLast = (pWrite->iOffset+pWrite->nBuf-1)/g.iSectorSize;
+        int iFirst = (int)(pWrite->iOffset/g.iSectorSize);
+        int iLast = (int)((pWrite->iOffset+pWrite->nBuf-1)/g.iSectorSize);
 
         assert(pWrite->zBuf);
 
@@ -430,7 +430,7 @@ static int cfWrite(
 ){
   CrashFile *pCrash = (CrashFile *)pFile;
   if( iAmt+iOfst>pCrash->iSize ){
-    pCrash->iSize = iAmt+iOfst;
+    pCrash->iSize = (int)(iAmt+iOfst);
   }
   while( pCrash->iSize>pCrash->nData ){
     u8 *zNew;
@@ -454,7 +454,7 @@ static int cfTruncate(sqlite3_file *pFile, sqlite_int64 size){
   CrashFile *pCrash = (CrashFile *)pFile;
   assert(size>=0);
   if( pCrash->iSize>size ){
-    pCrash->iSize = size;
+    pCrash->iSize = (int)size;
   }
   return writeListAppend(pFile, size, 0, 0);
 }
@@ -476,7 +476,15 @@ static int cfSync(sqlite3_file *pFile, int flags){
     if( nName>nCrashFile ) nName = nCrashFile;
   }
 
+#ifdef TRACE_CRASHTEST
+  printf("cfSync(): nName = %d, nCrashFile = %d, zName = %s, zCrashFile = %s\n",
+         nName, nCrashFile, zName, zCrashFile);
+#endif
+
   if( nName==nCrashFile && 0==memcmp(zName, zCrashFile, nName) ){
+#ifdef TRACE_CRASHTEST
+    printf("cfSync(): name matched, g.iCrash = %d\n", g.iCrash);
+#endif
     if( (--g.iCrash)==0 ) isCrash = 1;
   }
 
@@ -505,6 +513,16 @@ static int cfCheckReservedLock(sqlite3_file *pFile, int *pResOut){
   return sqlite3OsCheckReservedLock(((CrashFile *)pFile)->pRealFile, pResOut);
 }
 static int cfFileControl(sqlite3_file *pFile, int op, void *pArg){
+  if( op==SQLITE_FCNTL_SIZE_HINT ){
+    CrashFile *pCrash = (CrashFile *)pFile;
+    i64 nByte = *(i64 *)pArg;
+    if( nByte>pCrash->iSize ){
+      if( SQLITE_OK==writeListAppend(pFile, nByte, 0, 0) ){
+        pCrash->iSize = (int)nByte;
+      }
+    }
+    return SQLITE_OK;
+  }
   return sqlite3OsFileControl(((CrashFile *)pFile)->pRealFile, op, pArg);
 }
 
@@ -617,11 +635,11 @@ static int cfOpen(
         iChunk = PENDING_BYTE;
       }
       memset(pWrapper->zData, 0, pWrapper->nData);
-      rc = sqlite3OsRead(pReal, pWrapper->zData, iChunk, 0); 
+      rc = sqlite3OsRead(pReal, pWrapper->zData, (int)iChunk, 0); 
       if( SQLITE_OK==rc && pWrapper->iSize>(PENDING_BYTE+512) && isDb ){
         i64 iOff = PENDING_BYTE+512;
         iChunk = pWrapper->iSize - iOff;
-        rc = sqlite3OsRead(pReal, &pWrapper->zData[iOff], iChunk, iOff);
+        rc = sqlite3OsRead(pReal, &pWrapper->zData[iOff], (int)iChunk, iOff);
       }
     }else{
       rc = SQLITE_NOMEM;
@@ -695,17 +713,18 @@ static int processDevSymArgs(
     char *zName;
     int iValue;
   } aFlag[] = {
-    { "atomic",      SQLITE_IOCAP_ATOMIC      },
-    { "atomic512",   SQLITE_IOCAP_ATOMIC512   },
-    { "atomic1k",    SQLITE_IOCAP_ATOMIC1K    },
-    { "atomic2k",    SQLITE_IOCAP_ATOMIC2K    },
-    { "atomic4k",    SQLITE_IOCAP_ATOMIC4K    },
-    { "atomic8k",    SQLITE_IOCAP_ATOMIC8K    },
-    { "atomic16k",   SQLITE_IOCAP_ATOMIC16K   },
-    { "atomic32k",   SQLITE_IOCAP_ATOMIC32K   },
-    { "atomic64k",   SQLITE_IOCAP_ATOMIC64K   },
-    { "sequential",  SQLITE_IOCAP_SEQUENTIAL  },
-    { "safe_append", SQLITE_IOCAP_SAFE_APPEND },
+    { "atomic",              SQLITE_IOCAP_ATOMIC                },
+    { "atomic512",           SQLITE_IOCAP_ATOMIC512             },
+    { "atomic1k",            SQLITE_IOCAP_ATOMIC1K              },
+    { "atomic2k",            SQLITE_IOCAP_ATOMIC2K              },
+    { "atomic4k",            SQLITE_IOCAP_ATOMIC4K              },
+    { "atomic8k",            SQLITE_IOCAP_ATOMIC8K              },
+    { "atomic16k",           SQLITE_IOCAP_ATOMIC16K             },
+    { "atomic32k",           SQLITE_IOCAP_ATOMIC32K             },
+    { "atomic64k",           SQLITE_IOCAP_ATOMIC64K             },
+    { "sequential",          SQLITE_IOCAP_SEQUENTIAL            },
+    { "safe_append",         SQLITE_IOCAP_SAFE_APPEND           },
+    { "powersafe_overwrite", SQLITE_IOCAP_POWERSAFE_OVERWRITE   },
     { 0, 0 }
   };
 

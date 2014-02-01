@@ -65,12 +65,12 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "$(SRCROOT)/public_source/test/apple_custom.test"
-            isEnabled = "YES">
+            argument = "$(SRCROOT)/public_source/test/veryquick.test"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "$(SRCROOT)/public_source/test/apple_custom2.test"
-            isEnabled = "NO">
+            argument = "$(SRCROOT)/public_source/test/fallocate.test"
+            isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>

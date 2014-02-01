@@ -368,6 +368,7 @@ static int fts3SnippetFindPositions(Fts3Expr *pExpr, int iPhrase, void *ctx){
     int iFirst = 0;
     pPhrase->pList = pCsr;
     fts3GetDeltaPosition(&pCsr, &iFirst);
+    assert( iFirst>=0 );
     pPhrase->pHead = pCsr;
     pPhrase->pTail = pCsr;
     pPhrase->iHead = iFirst;
@@ -531,6 +532,7 @@ static int fts3StringAppend(
 */
 static int fts3SnippetShift(
   Fts3Table *pTab,                /* FTS3 table snippet comes from */
+  int iLangid,                    /* Language id to use in tokenizing */
   int nSnippet,                   /* Number of tokens desired for snippet */
   const char *zDoc,               /* Document text to extract snippet from */
   int nDoc,                       /* Size of buffer zDoc in bytes */
@@ -566,11 +568,10 @@ static int fts3SnippetShift(
       /* Open a cursor on zDoc/nDoc. Check if there are (nSnippet+nDesired)
       ** or more tokens in zDoc/nDoc.
       */
-      rc = pMod->xOpen(pTab->pTokenizer, zDoc, nDoc, &pC);
+      rc = sqlite3Fts3OpenTokenizer(pTab->pTokenizer, iLangid, zDoc, nDoc, &pC);
       if( rc!=SQLITE_OK ){
         return rc;
       }
-      pC->pTokenizer = pTab->pTokenizer;
       while( rc==SQLITE_OK && iCurrent<(nSnippet+nDesired) ){
         const char *ZDUMMY; int DUMMY1, DUMMY2, DUMMY3;
         rc = pMod->xNext(pC, &ZDUMMY, &DUMMY1, &DUMMY2, &DUMMY3, &iCurrent);
@@ -630,11 +631,10 @@ static int fts3SnippetText(
 
   /* Open a token cursor on the document. */
   pMod = (sqlite3_tokenizer_module *)pTab->pTokenizer->pModule;
-  rc = pMod->xOpen(pTab->pTokenizer, zDoc, nDoc, &pC);
+  rc = sqlite3Fts3OpenTokenizer(pTab->pTokenizer, pCsr->iLangid, zDoc,nDoc,&pC);
   if( rc!=SQLITE_OK ){
     return rc;
   }
-  pC->pTokenizer = pTab->pTokenizer;
 
   while( rc==SQLITE_OK ){
     int iBegin;                   /* Offset in zDoc of start of token */
@@ -656,7 +656,9 @@ static int fts3SnippetText(
 
     if( !isShiftDone ){
       int n = nDoc - iBegin;
-      rc = fts3SnippetShift(pTab, nSnippet, &zDoc[iBegin], n, &iPos, &hlmask);
+      rc = fts3SnippetShift(
+          pTab, pCsr->iLangid, nSnippet, &zDoc[iBegin], n, &iPos, &hlmask
+      );
       isShiftDone = 1;
 
       /* Now that the shift has been done, check if the initial "..." are
@@ -792,8 +794,8 @@ static int fts3MatchinfoCheck(
 ){
   if( (cArg==FTS3_MATCHINFO_NPHRASE)
    || (cArg==FTS3_MATCHINFO_NCOL)
-   || (cArg==FTS3_MATCHINFO_NDOC && pTab->bHasStat)
-   || (cArg==FTS3_MATCHINFO_AVGLENGTH && pTab->bHasStat)
+   || (cArg==FTS3_MATCHINFO_NDOC && pTab->bFts4)
+   || (cArg==FTS3_MATCHINFO_AVGLENGTH && pTab->bFts4)
    || (cArg==FTS3_MATCHINFO_LENGTH && pTab->bHasDocsize)
    || (cArg==FTS3_MATCHINFO_LCS)
    || (cArg==FTS3_MATCHINFO_HITS)
@@ -848,7 +850,7 @@ static int fts3MatchinfoSelectDoctotal(
 
   a = sqlite3_column_blob(pStmt, 0);
   a += sqlite3Fts3GetVarint(a, &nDoc);
-  if( nDoc==0 ) return SQLITE_CORRUPT_VTAB;
+  if( nDoc==0 ) return FTS_CORRUPT_VTAB;
   *pnDoc = (u32)nDoc;
 
   if( paLen ) *paLen = a;
@@ -1389,9 +1391,10 @@ void sqlite3Fts3Offsets(
     }
 
     /* Initialize a tokenizer iterator to iterate through column iCol. */
-    rc = pMod->xOpen(pTab->pTokenizer, zDoc, nDoc, &pC);
+    rc = sqlite3Fts3OpenTokenizer(pTab->pTokenizer, pCsr->iLangid,
+        zDoc, nDoc, &pC
+    );
     if( rc!=SQLITE_OK ) goto offsets_out;
-    pC->pTokenizer = pTab->pTokenizer;
 
     rc = pMod->xNext(pC, &ZDUMMY, &NDUMMY, &iStart, &iEnd, &iCurrent);
     while( rc==SQLITE_OK ){
@@ -1409,7 +1412,7 @@ void sqlite3Fts3Offsets(
 
       if( !pTerm ){
         /* All offsets for this column have been gathered. */
-        break;
+        rc = SQLITE_DONE;
       }else{
         assert( iCurrent<=iMinPos );
         if( 0==(0xFE&*pTerm->pList) ){
@@ -1426,8 +1429,8 @@ void sqlite3Fts3Offsets(
               "%d %d %d %d ", iCol, pTerm-sCtx.aTerm, iStart, iEnd-iStart
           );
           rc = fts3StringAppend(&res, aBuffer, -1);
-        }else if( rc==SQLITE_DONE ){
-          rc = SQLITE_CORRUPT_VTAB;
+        }else if( rc==SQLITE_DONE && pTab->zContentTbl==0 ){
+          rc = FTS_CORRUPT_VTAB;
         }
       }
     }

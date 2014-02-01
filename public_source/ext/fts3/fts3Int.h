@@ -27,7 +27,14 @@
 # define SQLITE_ENABLE_FTS3
 #endif
 
-#ifdef SQLITE_ENABLE_FTS3
+#if !defined(SQLITE_CORE) || defined(SQLITE_ENABLE_FTS3)
+
+/* If not building as part of the core, include sqlite3ext.h. */
+#ifndef SQLITE_CORE
+# include "sqlite3ext.h" 
+extern const sqlite3_api_routines *sqlite3_api;
+#endif
+
 #include "sqlite3.h"
 #include "fts3_tokenizer.h"
 #include "fts3_hash.h"
@@ -59,6 +66,9 @@
 
 #ifndef MIN
 # define MIN(x,y) ((x)<(y)?(x):(y))
+#endif
+#ifndef MAX
+# define MAX(x,y) ((x)>(y)?(x):(y))
 #endif
 
 /*
@@ -114,7 +124,7 @@
 # define NEVER(X)  (0)
 #else
 # define ALWAYS(x) (x)
-# define NEVER(X)  (x)
+# define NEVER(x)  (x)
 #endif
 
 /*
@@ -124,6 +134,7 @@ typedef unsigned char u8;         /* 1-byte (or larger) unsigned integer */
 typedef short int i16;            /* 2-byte (or larger) signed integer */
 typedef unsigned int u32;         /* 4-byte unsigned integer */
 typedef sqlite3_uint64 u64;       /* 8-byte unsigned integer */
+typedef sqlite3_int64 i64;        /* 8-byte signed integer */
 
 /*
 ** Macro used to suppress compiler warnings for unused parameters.
@@ -149,6 +160,13 @@ typedef sqlite3_uint64 u64;       /* 8-byte unsigned integer */
 #endif
 
 #endif /* SQLITE_AMALGAMATION */
+
+#ifdef SQLITE_DEBUG
+int sqlite3Fts3Corrupt(void);
+# define FTS_CORRUPT_VTAB sqlite3Fts3Corrupt()
+#else
+# define FTS_CORRUPT_VTAB SQLITE_CORRUPT_VTAB
+#endif
 
 typedef struct Fts3Table Fts3Table;
 typedef struct Fts3Cursor Fts3Cursor;
@@ -177,36 +195,45 @@ struct Fts3Table {
   int nColumn;                    /* number of named columns in virtual table */
   char **azColumn;                /* column names.  malloced */
   sqlite3_tokenizer *pTokenizer;  /* tokenizer for inserts and queries */
+  char *zContentTbl;              /* content=xxx option, or NULL */
+  char *zLanguageid;              /* languageid=xxx option, or NULL */
+  u8 bAutoincrmerge;              /* True if automerge=1 */
+  u32 nLeafAdd;                   /* Number of leaf blocks added this trans */
 
   /* Precompiled statements used by the implementation. Each of these 
   ** statements is run and reset within a single virtual table API call. 
   */
-  sqlite3_stmt *aStmt[27];
+  sqlite3_stmt *aStmt[37];
 
   char *zReadExprlist;
   char *zWriteExprlist;
 
   int nNodeSize;                  /* Soft limit for node size */
+  u8 bFts4;                       /* True for FTS4, false for FTS3 */
   u8 bHasStat;                    /* True if %_stat table exists */
   u8 bHasDocsize;                 /* True if %_docsize table exists */
   u8 bDescIdx;                    /* True if doclists are in reverse order */
+  u8 bIgnoreSavepoint;            /* True to ignore xSavepoint invocations */
   int nPgsz;                      /* Page size for host database */
   char *zSegmentsTbl;             /* Name of %_segments table */
   sqlite3_blob *pSegments;        /* Blob handle open on %_segments table */
 
-  /* TODO: Fix the first paragraph of this comment.
-  **
-  ** The following hash table is used to buffer pending index updates during
-  ** transactions. Variable nPendingData estimates the memory size of the 
-  ** pending data, including hash table overhead, but not malloc overhead. 
-  ** When nPendingData exceeds nMaxPendingData, the buffer is flushed 
-  ** automatically. Variable iPrevDocid is the docid of the most recently
-  ** inserted record.
+  /* 
+  ** The following array of hash tables is used to buffer pending index 
+  ** updates during transactions. All pending updates buffered at any one
+  ** time must share a common language-id (see the FTS4 langid= feature).
+  ** The current language id is stored in variable iPrevLangid.
   **
   ** A single FTS4 table may have multiple full-text indexes. For each index
   ** there is an entry in the aIndex[] array. Index 0 is an index of all the
   ** terms that appear in the document set. Each subsequent index in aIndex[]
   ** is an index of prefixes of a specific length.
+  **
+  ** Variable nPendingData contains an estimate the memory consumed by the 
+  ** pending data structures, including hash table overhead, but not including
+  ** malloc overhead.  When nPendingData exceeds nMaxPendingData, all hash
+  ** tables are flushed to disk. Variable iPrevDocid is the docid of the most 
+  ** recently inserted record.
   */
   int nIndex;                     /* Size of aIndex[] */
   struct Fts3Index {
@@ -216,12 +243,13 @@ struct Fts3Table {
   int nMaxPendingData;            /* Max pending data before flush to disk */
   int nPendingData;               /* Current bytes of pending data */
   sqlite_int64 iPrevDocid;        /* Docid of most recently inserted document */
+  int iPrevLangid;                /* Langid of recently inserted document */
 
-#if defined(SQLITE_DEBUG)
+#if defined(SQLITE_DEBUG) || defined(SQLITE_COVERAGE_TEST)
   /* State variables used for validating that the transaction control
   ** methods of the virtual table are called at appropriate times.  These
-  ** values do not contribution to the FTS computation; they are used for
-  ** verifying the SQLite core.
+  ** values do not contribute to FTS functionality; they are used for
+  ** verifying the operation of the SQLite core.
   */
   int inTransaction;     /* True after xBegin but before xCommit/xRollback */
   int mxSavepoint;       /* Largest valid xSavepoint integer */
@@ -240,6 +268,7 @@ struct Fts3Cursor {
   u8 isRequireSeek;               /* True if must seek pStmt to %_content row */
   sqlite3_stmt *pStmt;            /* Prepared statement in use by the cursor */
   Fts3Expr *pExpr;                /* Parsed MATCH query string */
+  int iLangid;                    /* Language being queried for */
   int nPhrase;                    /* Number of matchable phrases in query */
   Fts3DeferredToken *pDeferred;   /* Deferred search tokens, if any */
   sqlite3_int64 iPrevId;          /* Previous id read from aDoclist */
@@ -290,7 +319,7 @@ struct Fts3Doclist {
   int bFreeList;                 /* True if pList should be sqlite3_free()d */
   char *pList;                   /* Pointer to position list following iDocid */
   int nList;                     /* Length of position list */
-} doclist;
+};
 
 /*
 ** A "phrase" is a sequence of one or more tokens that must match in
@@ -302,6 +331,7 @@ struct Fts3PhraseToken {
   char *z;                        /* Text of the token */
   int n;                          /* Number of bytes in buffer z */
   int isPrefix;                   /* True if token ends with a "*" character */
+  int bFirst;                     /* True if token must appear at position 0 */
 
   /* Variables above this point are populated when the expression is
   ** parsed (by code in fts3_expr.c). Below this point the variables are
@@ -385,12 +415,12 @@ int sqlite3Fts3UpdateMethod(sqlite3_vtab*,int,sqlite3_value**,sqlite3_int64*);
 int sqlite3Fts3PendingTermsFlush(Fts3Table *);
 void sqlite3Fts3PendingTermsClear(Fts3Table *);
 int sqlite3Fts3Optimize(Fts3Table *);
-int sqlite3Fts3SegReaderNew(int, sqlite3_int64,
+int sqlite3Fts3SegReaderNew(int, int, sqlite3_int64,
   sqlite3_int64, sqlite3_int64, const char *, int, Fts3SegReader**);
 int sqlite3Fts3SegReaderPending(
   Fts3Table*,int,const char*,int,int,Fts3SegReader**);
 void sqlite3Fts3SegReaderFree(Fts3SegReader *);
-int sqlite3Fts3AllSegdirs(Fts3Table*, int, int, sqlite3_stmt **);
+int sqlite3Fts3AllSegdirs(Fts3Table*, int, int, int, sqlite3_stmt **);
 int sqlite3Fts3ReadLock(Fts3Table *);
 int sqlite3Fts3ReadBlock(Fts3Table*, sqlite3_int64, char **, int*, int*);
 
@@ -402,6 +432,7 @@ int sqlite3Fts3DeferToken(Fts3Cursor *, Fts3PhraseToken *, int);
 int sqlite3Fts3CacheDeferredDoclists(Fts3Cursor *);
 void sqlite3Fts3FreeDeferredDoclists(Fts3Cursor *);
 void sqlite3Fts3SegmentsClose(Fts3Table *);
+int sqlite3Fts3MaxLevel(Fts3Table *, int *);
 
 /* Special values interpreted by sqlite3SegReaderCursor() */
 #define FTS3_SEGCURSOR_PENDING        -1
@@ -411,8 +442,8 @@ int sqlite3Fts3SegReaderStart(Fts3Table*, Fts3MultiSegReader*, Fts3SegFilter*);
 int sqlite3Fts3SegReaderStep(Fts3Table *, Fts3MultiSegReader *);
 void sqlite3Fts3SegReaderFinish(Fts3MultiSegReader *);
 
-int sqlite3Fts3SegReaderCursor(
-    Fts3Table *, int, int, const char *, int, int, int, Fts3MultiSegReader *);
+int sqlite3Fts3SegReaderCursor(Fts3Table *, 
+    int, int, int, const char *, int, int, int, Fts3MultiSegReader *);
 
 /* Flags allowed as part of the 4th argument to SegmentReaderIterate() */
 #define FTS3_SEGMENT_REQUIRE_POS   0x00000001
@@ -420,6 +451,7 @@ int sqlite3Fts3SegReaderCursor(
 #define FTS3_SEGMENT_COLUMN_FILTER 0x00000004
 #define FTS3_SEGMENT_PREFIX        0x00000008
 #define FTS3_SEGMENT_SCAN          0x00000010
+#define FTS3_SEGMENT_FIRST         0x00000020
 
 /* Type passed as 4th argument to SegmentReaderIterate() */
 struct Fts3SegFilter {
@@ -452,6 +484,8 @@ struct Fts3MultiSegReader {
   int nDoclist;                   /* Size of aDoclist[] in bytes */
 };
 
+int sqlite3Fts3Incrmerge(Fts3Table*,int,int);
+
 /* fts3.c */
 int sqlite3Fts3PutVarint(char *, sqlite3_int64);
 int sqlite3Fts3GetVarint(const char *, sqlite_int64 *);
@@ -459,8 +493,9 @@ int sqlite3Fts3GetVarint32(const char *, int *);
 int sqlite3Fts3VarintLen(sqlite3_uint64);
 void sqlite3Fts3Dequote(char *);
 void sqlite3Fts3DoclistPrev(int,char*,int,char**,sqlite3_int64*,int*,u8*);
-
 int sqlite3Fts3EvalPhraseStats(Fts3Cursor *, Fts3Expr *, u32 *);
+int sqlite3Fts3FirstFilter(sqlite3_int64, char *, int, char *);
+void sqlite3Fts3CreateStatTable(int*, Fts3Table*);
 
 /* fts3_tokenizer.c */
 const char *sqlite3Fts3NextToken(const char *, int *);
@@ -478,8 +513,8 @@ void sqlite3Fts3Snippet(sqlite3_context *, Fts3Cursor *, const char *,
 void sqlite3Fts3Matchinfo(sqlite3_context *, Fts3Cursor *, const char *);
 
 /* fts3_expr.c */
-int sqlite3Fts3ExprParse(sqlite3_tokenizer *, 
-  char **, int, int, const char *, int, Fts3Expr **
+int sqlite3Fts3ExprParse(sqlite3_tokenizer *, int,
+  char **, int, int, int, const char *, int, Fts3Expr **
 );
 void sqlite3Fts3ExprFree(Fts3Expr *);
 #ifdef SQLITE_TEST
@@ -487,21 +522,14 @@ int sqlite3Fts3ExprInitTestInterface(sqlite3 *db);
 int sqlite3Fts3InitTerm(sqlite3 *db);
 #endif
 
+int sqlite3Fts3OpenTokenizer(sqlite3_tokenizer *, int, const char *, int,
+  sqlite3_tokenizer_cursor **
+);
+
 /* fts3_aux.c */
 int sqlite3Fts3InitAux(sqlite3 *db);
 
-int sqlite3Fts3TermSegReaderCursor(
-  Fts3Cursor *pCsr,               /* Virtual table cursor handle */
-  const char *zTerm,              /* Term to query for */
-  int nTerm,                      /* Size of zTerm in bytes */
-  int isPrefix,                   /* True for a prefix search */
-  Fts3MultiSegReader **ppSegcsr   /* OUT: Allocated seg-reader cursor */
-);
-
 void sqlite3Fts3EvalPhraseCleanup(Fts3Phrase *);
-
-int sqlite3Fts3EvalStart(Fts3Cursor *, Fts3Expr *, int);
-int sqlite3Fts3EvalNext(Fts3Cursor *pCsr);
 
 int sqlite3Fts3MsrIncrStart(
     Fts3Table*, Fts3MultiSegReader*, int, const char*, int);
@@ -513,5 +541,5 @@ int sqlite3Fts3MsrIncrRestart(Fts3MultiSegReader *pCsr);
 
 int sqlite3Fts3DeferredTokenList(Fts3DeferredToken *, char **, int *);
 
-#endif /* SQLITE_ENABLE_FTS3 */
+#endif /* !SQLITE_CORE || SQLITE_ENABLE_FTS3 */
 #endif /* _FTSINT_H */

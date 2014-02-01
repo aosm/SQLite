@@ -831,13 +831,10 @@ static int echoBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo){
     if( !isIgnoreUsable && !pConstraint->usable ) continue;
 
     iCol = pConstraint->iColumn;
-    if( pVtab->aIndex[iCol] || iCol<0 ){
-      char *zCol = pVtab->aCol[iCol];
+    if( iCol<0 || pVtab->aIndex[iCol] ){
+      char *zCol = iCol>=0 ? pVtab->aCol[iCol] : "rowid";
       char *zOp = 0;
       useIdx = 1;
-      if( iCol<0 ){
-        zCol = "rowid";
-      }
       switch( pConstraint->op ){
         case SQLITE_INDEX_CONSTRAINT_EQ:
           zOp = "="; break;
@@ -870,13 +867,12 @@ static int echoBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo){
   ** on a column that this virtual table has an index for, then consume 
   ** the ORDER BY clause.
   */
-  if( pIdxInfo->nOrderBy==1 && pVtab->aIndex[pIdxInfo->aOrderBy->iColumn] ){
+  if( pIdxInfo->nOrderBy==1 && (
+        pIdxInfo->aOrderBy->iColumn<0 ||
+        pVtab->aIndex[pIdxInfo->aOrderBy->iColumn]) ){
     int iCol = pIdxInfo->aOrderBy->iColumn;
-    char *zCol = pVtab->aCol[iCol];
+    char *zCol = iCol>=0 ? pVtab->aCol[iCol] : "rowid";
     char *zDir = pIdxInfo->aOrderBy->desc?"DESC":"ASC";
-    if( iCol<0 ){
-      zCol = "rowid";
-    }
     zNew = sqlite3_mprintf(" ORDER BY %s %s", zCol, zDir);
     string_concat(&zQuery, zNew, 1, &rc);
     pIdxInfo->orderByConsumed = 1;
@@ -1232,12 +1228,50 @@ static int echoRename(sqlite3_vtab *vtab, const char *zNewName){
   return rc;
 }
 
+static int echoSavepoint(sqlite3_vtab *pVTab, int iSavepoint){
+  assert( pVTab );
+  return SQLITE_OK;
+}
+
+static int echoRelease(sqlite3_vtab *pVTab, int iSavepoint){
+  assert( pVTab );
+  return SQLITE_OK;
+}
+
+static int echoRollbackTo(sqlite3_vtab *pVTab, int iSavepoint){
+  assert( pVTab );
+  return SQLITE_OK;
+}
+
 /*
 ** A virtual table module that merely "echos" the contents of another
 ** table (like an SQL VIEW).
 */
 static sqlite3_module echoModule = {
-  0,                         /* iVersion */
+  1,                         /* iVersion */
+  echoCreate,
+  echoConnect,
+  echoBestIndex,
+  echoDisconnect, 
+  echoDestroy,
+  echoOpen,                  /* xOpen - open a cursor */
+  echoClose,                 /* xClose - close a cursor */
+  echoFilter,                /* xFilter - configure scan constraints */
+  echoNext,                  /* xNext - advance a cursor */
+  echoEof,                   /* xEof */
+  echoColumn,                /* xColumn - read data */
+  echoRowid,                 /* xRowid - read data */
+  echoUpdate,                /* xUpdate - write data */
+  echoBegin,                 /* xBegin - begin transaction */
+  echoSync,                  /* xSync - sync transaction */
+  echoCommit,                /* xCommit - commit transaction */
+  echoRollback,              /* xRollback - rollback transaction */
+  echoFindFunction,          /* xFindFunction - function overloading */
+  echoRename                 /* xRename - rename the table */
+};
+
+static sqlite3_module echoModuleV2 = {
+  2,                         /* iVersion */
   echoCreate,
   echoConnect,
   echoBestIndex,
@@ -1257,6 +1291,9 @@ static sqlite3_module echoModule = {
   echoRollback,              /* xRollback - rollback transaction */
   echoFindFunction,          /* xFindFunction - function overloading */
   echoRename,                /* xRename - rename the table */
+  echoSavepoint,
+  echoRelease,
+  echoRollbackTo
 };
 
 /*
@@ -1284,9 +1321,18 @@ static int register_echo_module(
     return TCL_ERROR;
   }
   if( getDbPointer(interp, Tcl_GetString(objv[1]), &db) ) return TCL_ERROR;
+
+  /* Virtual table module "echo" */
   pMod = sqlite3_malloc(sizeof(EchoModule));
   pMod->interp = interp;
   sqlite3_create_module_v2(db, "echo", &echoModule, (void*)pMod, moduleDestroy);
+
+  /* Virtual table module "echo_v2" */
+  pMod = sqlite3_malloc(sizeof(EchoModule));
+  pMod->interp = interp;
+  sqlite3_create_module_v2(db, "echo_v2", 
+      &echoModuleV2, (void*)pMod, moduleDestroy
+  );
   return TCL_OK;
 }
 

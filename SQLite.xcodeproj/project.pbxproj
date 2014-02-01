@@ -218,6 +218,9 @@
 		663DDF310F2588440053A7C4 /* Tcl.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 66B5C0430F20747F008F89D3 /* Tcl.framework */; };
 		663DE0420F25897B0053A7C4 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 663DE0410F25897B0053A7C4 /* libsqlite3.dylib */; };
 		663DE0430F258A090053A7C4 /* tclsqlite.c in Sources */ = {isa = PBXBuildFile; fileRef = 6670FBD20E5617B200B315E8 /* tclsqlite.c */; };
+		6652313D14C7539700FD2C58 /* test_quota.h in Headers */ = {isa = PBXBuildFile; fileRef = 6652313B14C7539700FD2C58 /* test_quota.h */; };
+		6652313E14C7539700FD2C58 /* vdbesort.c in Sources */ = {isa = PBXBuildFile; fileRef = 6652313C14C7539700FD2C58 /* vdbesort.c */; };
+		6652313F14C7539700FD2C58 /* vdbesort.c in Sources */ = {isa = PBXBuildFile; fileRef = 6652313C14C7539700FD2C58 /* vdbesort.c */; };
 		665520BB1334338F004308A7 /* test_superlock.c in Sources */ = {isa = PBXBuildFile; fileRef = 66E5E2FC130484FF00A3FE37 /* test_superlock.c */; };
 		665520BC13343390004308A7 /* test_superlock.c in Sources */ = {isa = PBXBuildFile; fileRef = 66E5E2FC130484FF00A3FE37 /* test_superlock.c */; };
 		6661AB970F257D6300B3F273 /* sqlite3.c in Sources */ = {isa = PBXBuildFile; fileRef = 66C450BA0F20091700D0A4DD /* sqlite3.c */; };
@@ -487,6 +490,46 @@
 		661358EF0D06391300306A7B /* TestingNotes.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TestingNotes.txt; sourceTree = "<group>"; };
 		6615051B0F26AB4300557C4D /* installtcldyliblinks.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = installtcldyliblinks.sh; sourceTree = "<group>"; };
 		6620F3520E9F359500CA69B0 /* lock6.test */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = text; path = lock6.test; sourceTree = "<group>"; tabWidth = 2; };
+		6627333E150FEB24001129DF /* 2010-09-27.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "2010-09-27.test"; sourceTree = "<group>"; };
+		6627333F150FEB24001129DF /* 2010-12-06.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "2010-12-06.test"; sourceTree = "<group>"; };
+		66273340150FEB24001129DF /* 2011-09-16.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "2011-09-16.test"; sourceTree = "<group>"; };
+		66273341150FEBED001129DF /* wal1.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wal1.cfg; sourceTree = "<group>"; };
+		66273342150FEC4A001129DF /* cH.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; name = cH.cfg; path = TH3/th3_public_source/cfg/cH.cfg; sourceTree = SOURCE_ROOT; };
+		66273343150FEC7A001129DF /* backup14.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = backup14.test; sourceTree = "<group>"; };
+		66273344150FEC7A001129DF /* bigfile01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = bigfile01.test; sourceTree = "<group>"; };
+		66273345150FEC7A001129DF /* btree73.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = btree73.test; sourceTree = "<group>"; };
+		66273346150FEC7A001129DF /* btree74.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = btree74.test; sourceTree = "<group>"; };
+		66273347150FEC7A001129DF /* btree75.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = btree75.test; sourceTree = "<group>"; };
+		66273348150FEC7A001129DF /* fkey22.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fkey22.test; sourceTree = "<group>"; };
+		66273349150FEC7A001129DF /* main36.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = main36.test; sourceTree = "<group>"; };
+		6627334A150FEC7A001129DF /* pcache04.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pcache04.test; sourceTree = "<group>"; };
+		6627334B150FEC7A001129DF /* select34.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = select34.test; sourceTree = "<group>"; };
+		6627334C150FEC7A001129DF /* sort01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = sort01.test; sourceTree = "<group>"; };
+		6627334D150FEC7A001129DF /* sort02.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = sort02.test; sourceTree = "<group>"; };
+		6627334E150FEC7A001129DF /* sort03.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = sort03.test; sourceTree = "<group>"; };
+		6627334F150FEC7A001129DF /* wal37.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal37.test; sourceTree = "<group>"; };
+		66273350150FEC7B001129DF /* walcrash01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = walcrash01.test; sourceTree = "<group>"; };
+		66273351150FEC7B001129DF /* where29.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where29.test; sourceTree = "<group>"; };
+		66273352150FEC7B001129DF /* where30.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where30.test; sourceTree = "<group>"; };
+		66273353150FEC7B001129DF /* where31.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where31.test; sourceTree = "<group>"; };
+		66273354150FECA0001129DF /* crash01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = crash01.test; sourceTree = "<group>"; };
+		66273355150FECA0001129DF /* sectorsize01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = sectorsize01.test; sourceTree = "<group>"; };
+		66273356150FECA0001129DF /* speed1wal.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = speed1wal.cfg; sourceTree = "<group>"; };
+		66273357150FECA0001129DF /* walcrash02.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = walcrash02.test; sourceTree = "<group>"; };
+		66273358150FED85001129DF /* align2.testplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = align2.testplan; sourceTree = "<group>"; };
+		66273359150FED85001129DF /* alignment7.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = alignment7.rc; sourceTree = "<group>"; };
+		6627335A150FED85001129DF /* mingw-cross.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "mingw-cross.rc"; sourceTree = "<group>"; };
+		6627335B150FED85001129DF /* mkdevkit.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = mkdevkit.sh; sourceTree = "<group>"; };
+		6627335C150FED85001129DF /* mksession.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = mksession.sh; sourceTree = "<group>"; };
+		6627335D150FED85001129DF /* mkzipvfs-debug.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "mkzipvfs-debug.sh"; sourceTree = "<group>"; };
+		6627335E150FED85001129DF /* mkzipvfs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = mkzipvfs.sh; sourceTree = "<group>"; };
+		6627335F150FED85001129DF /* nx_compress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = nx_compress.c; sourceTree = "<group>"; };
+		66273360150FED85001129DF /* obfuscate.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = obfuscate.c; sourceTree = "<group>"; };
+		66273361150FED85001129DF /* session.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = session.rc; sourceTree = "<group>"; };
+		66273362150FED85001129DF /* speedtest.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = speedtest.rc; sourceTree = "<group>"; };
+		66273363150FED85001129DF /* vfs-cov.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "vfs-cov.rc"; sourceTree = "<group>"; };
+		66273364150FED85001129DF /* win32heap.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = win32heap.rc; sourceTree = "<group>"; };
+		66273365150FED86001129DF /* zipvfs.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = zipvfs.rc; sourceTree = "<group>"; };
 		662789D20F3AE8C100637D6F /* rebuild_derived.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rebuild_derived.sh; sourceTree = "<group>"; };
 		6627C51111067F76002F0642 /* shell3.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = shell3.test; sourceTree = "<group>"; };
 		6627C51211067F92002F0642 /* fts3query.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = fts3query.test; sourceTree = "<group>"; };
@@ -497,7 +540,6 @@
 		66287B501084F02800AF1277 /* README.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.txt; sourceTree = "<group>"; };
 		66287B511084F02800AF1277 /* sqlite3async.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sqlite3async.c; sourceTree = "<group>"; };
 		66287B521084F02800AF1277 /* sqlite3async.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sqlite3async.h; sourceTree = "<group>"; };
-		66287B551084F1E300AF1277 /* analyze2.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = analyze2.test; sourceTree = "<group>"; };
 		66287B561084F1E300AF1277 /* async4.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = async4.test; sourceTree = "<group>"; };
 		66287B571084F1E300AF1277 /* async5.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = async5.test; sourceTree = "<group>"; };
 		66287B581084F1E300AF1277 /* corruptD.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = corruptD.test; sourceTree = "<group>"; };
@@ -588,6 +630,42 @@
 		663F61A90EC943F100554C75 /* sqliteicu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sqliteicu.h; sourceTree = "<group>"; };
 		663F61AA0EC943FE00554C75 /* rtree6.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rtree6.test; sourceTree = "<group>"; };
 		663F61AB0EC943FE00554C75 /* tkt3363.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tkt3363.test; sourceTree = "<group>"; };
+		6652313B14C7539700FD2C58 /* test_quota.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = test_quota.h; sourceTree = "<group>"; };
+		6652313C14C7539700FD2C58 /* vdbesort.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = vdbesort.c; sourceTree = "<group>"; };
+		6652314114C7541C00FD2C58 /* analyze8.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = analyze8.test; sourceTree = "<group>"; };
+		6652314214C7541C00FD2C58 /* bigfile2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = bigfile2.test; sourceTree = "<group>"; };
+		6652314314C7541C00FD2C58 /* dbstatus2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = dbstatus2.test; sourceTree = "<group>"; };
+		6652314414C7541C00FD2C58 /* distinct.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = distinct.test; sourceTree = "<group>"; };
+		6652314514C7541C00FD2C58 /* errmsg.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = errmsg.test; sourceTree = "<group>"; };
+		6652314614C7541C00FD2C58 /* fts-9fd058691.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "fts-9fd058691.test"; sourceTree = "<group>"; };
+		6652314714C7541C00FD2C58 /* fts3drop.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3drop.test; sourceTree = "<group>"; };
+		6652314814C7541C00FD2C58 /* fts3first.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3first.test; sourceTree = "<group>"; };
+		6652314914C7541C00FD2C58 /* fts4content.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4content.test; sourceTree = "<group>"; };
+		6652314A14C7541C00FD2C58 /* index4.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = index4.test; sourceTree = "<group>"; };
+		6652314B14C7541C00FD2C58 /* indexfault.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = indexfault.test; sourceTree = "<group>"; };
+		6652314C14C7541C00FD2C58 /* multiplex2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = multiplex2.test; sourceTree = "<group>"; };
+		6652314D14C7541C00FD2C58 /* multiplex3.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = multiplex3.test; sourceTree = "<group>"; };
+		6652314E14C7541C00FD2C58 /* quota-glob.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quota-glob.test"; sourceTree = "<group>"; };
+		6652314F14C7541C00FD2C58 /* quota2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = quota2.test; sourceTree = "<group>"; };
+		6652315014C7541C00FD2C58 /* shrink.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = shrink.test; sourceTree = "<group>"; };
+		6652315114C7541C00FD2C58 /* subquery2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = subquery2.test; sourceTree = "<group>"; };
+		6652315214C7541C00FD2C58 /* tkt-3a77c9714e.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-3a77c9714e.test"; sourceTree = "<group>"; };
+		6652315314C7541C00FD2C58 /* tkt-7bbfb7d442.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-7bbfb7d442.test"; sourceTree = "<group>"; };
+		6652315414C7541C00FD2C58 /* tkt-54844eea3f.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-54844eea3f.test"; sourceTree = "<group>"; };
+		6652315514C7541C00FD2C58 /* tkt-b1d3a2e531.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-b1d3a2e531.test"; sourceTree = "<group>"; };
+		6652315614C7541C00FD2C58 /* tkt-c48d99d690.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-c48d99d690.test"; sourceTree = "<group>"; };
+		6652315714C7541C00FD2C58 /* tkt-d635236375.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-d635236375.test"; sourceTree = "<group>"; };
+		6652315814C7541C00FD2C58 /* tkt-fa7bf5ec.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = "tkt-fa7bf5ec.test"; sourceTree = "<group>"; };
+		6652315914C7541C00FD2C58 /* vtabF.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = vtabF.test; sourceTree = "<group>"; };
+		6652315A14C7541C00FD2C58 /* walcrash3.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = walcrash3.test; sourceTree = "<group>"; };
+		6652315B14C7541C00FD2C58 /* whereC.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = whereC.test; sourceTree = "<group>"; };
+		6652315C14C7541C00FD2C58 /* win32lock.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = win32lock.test; sourceTree = "<group>"; };
+		6652315D14C7541C00FD2C58 /* zerodamage.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = zerodamage.test; sourceTree = "<group>"; };
+		6652315E14C7542E00FD2C58 /* extract.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = extract.c; sourceTree = "<group>"; };
+		6652315F14C7542E00FD2C58 /* mksqlite3c-noext.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = "mksqlite3c-noext.tcl"; sourceTree = "<group>"; };
+		6652316014C7542E00FD2C58 /* offsets.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = offsets.c; sourceTree = "<group>"; };
+		6652316114C7542E00FD2C58 /* symbols-mingw.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "symbols-mingw.sh"; sourceTree = "<group>"; };
+		6652316214C7542E00FD2C58 /* warnings-clang.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "warnings-clang.sh"; sourceTree = "<group>"; };
 		66593ED0128CB6F3003023FC /* coverage.testplan */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = coverage.testplan; sourceTree = "<group>"; };
 		66593ED1128CB6F3003023FC /* memdebug.rc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = memdebug.rc; sourceTree = "<group>"; };
 		66593ED2128CB6F3003023FC /* min.rc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = min.rc; sourceTree = "<group>"; };
@@ -621,6 +699,16 @@
 		6661AB740F257CAC00B3F273 /* libsqlite3.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libsqlite3.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		6661AB7C0F257D0500B3F273 /* sqlite3 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = sqlite3; sourceTree = BUILT_PRODUCTS_DIR; };
 		6662FB5A0F40BF890021A4B6 /* testfixture */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = testfixture; sourceTree = BUILT_PRODUCTS_DIR; };
+		6665B07F1559C648001DAD9F /* fts4tokenize01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4tokenize01.test; sourceTree = "<group>"; };
+		6665B0811559C687001DAD9F /* check01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = check01.test; sourceTree = "<group>"; };
+		6665B0821559C687001DAD9F /* insert16.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = insert16.test; sourceTree = "<group>"; };
+		6665B0831559C687001DAD9F /* main37.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = main37.test; sourceTree = "<group>"; };
+		6665B0841559C687001DAD9F /* minmax01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = minmax01.test; sourceTree = "<group>"; };
+		6665B0851559C687001DAD9F /* pragma24.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = pragma24.test; sourceTree = "<group>"; };
+		6665B0861559C687001DAD9F /* rtree01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = rtree01.test; sourceTree = "<group>"; };
+		6665B0871559C687001DAD9F /* typeof01.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = typeof01.test; sourceTree = "<group>"; };
+		6665B0881559C687001DAD9F /* where32.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = where32.test; sourceTree = "<group>"; };
+		6665B0891559C690001DAD9F /* reparse01.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = reparse01.test; sourceTree = "<group>"; };
 		6670FB8C0E56148500B315E8 /* buildroot.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = buildroot.sh; sourceTree = "<group>"; };
 		6670FB8D0E56148500B315E8 /* configure.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = configure.py; sourceTree = "<group>"; };
 		6670FB8F0E5615FF00B315E8 /* config.h.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = config.h.in; sourceTree = "<group>"; };
@@ -745,7 +833,6 @@
 		6670FC0D0E561AFA00B315E8 /* autoinc.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = autoinc.test; sourceTree = "<group>"; };
 		6670FC0E0E561AFA00B315E8 /* autovacuum_ioerr2.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = autovacuum_ioerr2.test; sourceTree = "<group>"; };
 		6670FC0F0E561AFA00B315E8 /* autovacuum.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = autovacuum.test; sourceTree = "<group>"; };
-		6670FC100E561AFA00B315E8 /* avtrans91.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = avtrans91.test; sourceTree = "<group>"; };
 		6670FC110E561AFA00B315E8 /* badutf.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = badutf.test; sourceTree = "<group>"; };
 		6670FC120E561AFA00B315E8 /* between.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = between.test; sourceTree = "<group>"; };
 		6670FC130E561AFA00B315E8 /* bigfile.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = bigfile.test; sourceTree = "<group>"; };
@@ -1208,6 +1295,18 @@
 		668FB4CE1176650700F252C4 /* th3_fulltest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = th3_fulltest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6699F872118651E900E6561F /* th3_onetest.th3script */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = th3_onetest.th3script; sourceTree = "<group>"; };
 		6699F87C1186520C00E6561F /* th3_onetest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = th3_onetest; sourceTree = BUILT_PRODUCTS_DIR; };
+		66A73CCB152A59D60088A048 /* bc_common.tcl */ = {isa = PBXFileReference; lastKnownFileType = text; path = bc_common.tcl; sourceTree = "<group>"; };
+		66A73CCC152A59D70088A048 /* corruptF.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = corruptF.test; sourceTree = "<group>"; };
+		66A73CCD152A59D70088A048 /* fts3prefix2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts3prefix2.test; sourceTree = "<group>"; };
+		66A73CCE152A59D70088A048 /* fts4check.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4check.test; sourceTree = "<group>"; };
+		66A73CCF152A59D70088A048 /* fts4langid.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4langid.test; sourceTree = "<group>"; };
+		66A73CD0152A59D70088A048 /* fts4merge.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4merge.test; sourceTree = "<group>"; };
+		66A73CD1152A59D70088A048 /* fts4merge2.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4merge2.test; sourceTree = "<group>"; };
+		66A73CD2152A59D70088A048 /* fts4merge3.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fts4merge3.test; sourceTree = "<group>"; };
+		66A73CD3152A59D70088A048 /* fuzzerfault.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = fuzzerfault.test; sourceTree = "<group>"; };
+		66A73CD4152A59D70088A048 /* incrblob4.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = incrblob4.test; sourceTree = "<group>"; };
+		66A73CD5152A59D70088A048 /* minmax4.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = minmax4.test; sourceTree = "<group>"; };
+		66A73CD6152A59D70088A048 /* wal8.test */ = {isa = PBXFileReference; lastKnownFileType = text; path = wal8.test; sourceTree = "<group>"; };
 		66ABFBF811D493B800404FCA /* test_demovfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_demovfs.c; sourceTree = "<group>"; };
 		66ABFBF911D493B800404FCA /* test_vfs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test_vfs.c; sourceTree = "<group>"; };
 		66ABFBFA11D493B800404FCA /* wal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = wal.c; sourceTree = "<group>"; };
@@ -1240,6 +1339,8 @@
 		66ABFC3511D4A28200404FCA /* lock_common.tcl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lock_common.tcl; sourceTree = "<group>"; };
 		66AC6BF4117E4A8E00BC9551 /* th3_quicktest.th3script */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = th3_quicktest.th3script; sourceTree = "<group>"; };
 		66AC6C09117E4BA100BC9551 /* th3_quicktest */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = th3_quicktest; sourceTree = BUILT_PRODUCTS_DIR; };
+		66AE73C514894E3D00A9B8F8 /* tkt-91e2e8ba6f.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "tkt-91e2e8ba6f.test"; sourceTree = "<group>"; };
+		66AE73C714894E3D00A9B8F8 /* walpersist.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = walpersist.test; sourceTree = "<group>"; };
 		66B3B9EB0E65D5F000B8CCBE /* UsageNotes.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = UsageNotes.txt; sourceTree = "<group>"; };
 		66B5C0280F2070A2008F89D3 /* keywordhash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = keywordhash.h; sourceTree = "<group>"; };
 		66B5C0290F2070A2008F89D3 /* opcodes.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = opcodes.c; sourceTree = "<group>"; };
@@ -1300,7 +1401,6 @@
 		66BA824D1211C593001B8B25 /* no_journal_opt_01.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = no_journal_opt_01.test; sourceTree = "<group>"; };
 		66BA824E1211C593001B8B25 /* speed1.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = speed1.cfg; sourceTree = "<group>"; };
 		66BA824F1211C593001B8B25 /* speed1p.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = speed1p.test; sourceTree = "<group>"; };
-		66BA82501211C593001B8B25 /* wal1.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wal1.cfg; sourceTree = "<group>"; };
 		66BA82511211C593001B8B25 /* wal2.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = wal2.cfg; sourceTree = "<group>"; };
 		66BA82521211C5B2001B8B25 /* crash005.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = crash005.test; sourceTree = "<group>"; };
 		66BA82531211C5B2001B8B25 /* fts3-03.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "fts3-03.test"; sourceTree = "<group>"; };
@@ -1503,7 +1603,6 @@
 		66CB991F11C9BBCD006637CE /* func01.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = func01.test; sourceTree = "<group>"; };
 		66CB992011C9BBCD006637CE /* func02.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = func02.test; sourceTree = "<group>"; };
 		66CD7C31119200C6009D068D /* build_th3.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_th3.sh; sourceTree = "<group>"; };
-		66CD7C32119200C6009D068D /* qualify_th3.sh */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = text.script.sh; path = qualify_th3.sh; sourceTree = "<group>"; tabWidth = 2; };
 		66CD7C33119200C6009D068D /* tclroot.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = tclroot.sh; sourceTree = "<group>"; };
 		66CD7C3411920129009D068D /* Building_Running_TH3.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Building_Running_TH3.txt; sourceTree = "<group>"; };
 		66CD7C3511920129009D068D /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -1541,7 +1640,6 @@
 		66CD7C5911920129009D068D /* cE.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cE.cfg; sourceTree = "<group>"; };
 		66CD7C5A11920129009D068D /* cF.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cF.cfg; sourceTree = "<group>"; };
 		66CD7C5B11920129009D068D /* oom1.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = oom1.cfg; sourceTree = "<group>"; };
-		66CD7C5C11920129009D068D /* u1.cfg */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = u1.cfg; sourceTree = "<group>"; };
 		66CD7C6111920129009D068D /* cov.rc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = cov.rc; sourceTree = "<group>"; };
 		66CD7C6311920129009D068D /* affinity01.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = affinity01.test; sourceTree = "<group>"; };
 		66CD7C6411920129009D068D /* aggfunc01.test */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = aggfunc01.test; sourceTree = "<group>"; };
@@ -2643,7 +2741,6 @@
 				6615051B0F26AB4300557C4D /* installtcldyliblinks.sh */,
 				66F038010F264EBC00805B9A /* installtclpkg.sh */,
 				66FFBBEA0ED4C0360069A13F /* qualify.sh */,
-				66CD7C32119200C6009D068D /* qualify_th3.sh */,
 				662789D20F3AE8C100637D6F /* rebuild_derived.sh */,
 				66CD7C33119200C6009D068D /* tclroot.sh */,
 			);
@@ -2877,37 +2974,6 @@
 		66CD7C3711920129009D068D /* th3_public_source */ = {
 			isa = PBXGroup;
 			children = (
-				66D0E5A913E3496A00013412 /* session */,
-				66593ED0128CB6F3003023FC /* coverage.testplan */,
-				66593ED1128CB6F3003023FC /* memdebug.rc */,
-				66593ED2128CB6F3003023FC /* min.rc */,
-				66BA821C1211C534001B8B25 /* covopts.rc */,
-				66BA821D1211C534001B8B25 /* cygwin.rc */,
-				66CB990611C9BB73006637CE /* alignment6.rc */,
-				66CB990711C9BB73006637CE /* fast-ex.rc */,
-				66CB990811C9BB73006637CE /* fulltest.tcl */,
-				66CB990911C9BB73006637CE /* test-ex.rc */,
-				66CD7C3811920129009D068D /* alignment1.rc */,
-				66CD7C3911920129009D068D /* alignment2.rc */,
-				66CD7C3B11920129009D068D /* alignment4.rc */,
-				66CD7C3C11920129009D068D /* alignment5.rc */,
-				66CD7C6111920129009D068D /* cov.rc */,
-				66CD7EB91192012A009D068D /* fast.rc */,
-				66CD7EC21192012A009D068D /* fts.rc */,
-				66CD7EC31192012A009D068D /* ftsparen.rc */,
-				66CD7EC71192012A009D068D /* manifest */,
-				66CD7EC81192012A009D068D /* manifest.uuid */,
-				66CD7EC91192012A009D068D /* mingw.rc */,
-				66CD7ECD1192012A009D068D /* mkth3.tcl */,
-				66CD7ECE1192012A009D068D /* msvc.rc */,
-				66CD7ECF1192012A009D068D /* README.txt */,
-				66CD7ED01192012A009D068D /* README.wince.txt */,
-				66CD7ED11192012A009D068D /* releasetest.sh */,
-				66CD7EFD1192012A009D068D /* script.c */,
-				66CD7EFE1192012A009D068D /* see.rc */,
-				66CD7F411192012A009D068D /* test.rc */,
-				66CD7F421192012A009D068D /* th3_alt_os.h.wince */,
-				66CD7F431192012A009D068D /* th3make */,
 				66CD7C3D11920129009D068D /* bugs */,
 				66CD7C4B11920129009D068D /* cfg */,
 				66CD7C6211920129009D068D /* cov1 */,
@@ -2917,8 +2983,53 @@
 				66CD7EC41192012A009D068D /* hlr1 */,
 				66CD7ECA1192012A009D068D /* misc */,
 				66CD7ED21192012A009D068D /* req1 */,
+				66D0E5A913E3496A00013412 /* session */,
 				66CD7EFF1192012A009D068D /* stress */,
 				66CD7F441192012A009D068D /* www */,
+				66273358150FED85001129DF /* align2.testplan */,
+				66CD7C3811920129009D068D /* alignment1.rc */,
+				66CD7C3911920129009D068D /* alignment2.rc */,
+				66CD7C3B11920129009D068D /* alignment4.rc */,
+				66CD7C3C11920129009D068D /* alignment5.rc */,
+				66CB990611C9BB73006637CE /* alignment6.rc */,
+				66273359150FED85001129DF /* alignment7.rc */,
+				66CD7C6111920129009D068D /* cov.rc */,
+				66593ED0128CB6F3003023FC /* coverage.testplan */,
+				66BA821C1211C534001B8B25 /* covopts.rc */,
+				66BA821D1211C534001B8B25 /* cygwin.rc */,
+				66CB990711C9BB73006637CE /* fast-ex.rc */,
+				66CD7EB91192012A009D068D /* fast.rc */,
+				66CD7EC21192012A009D068D /* fts.rc */,
+				66CD7EC31192012A009D068D /* ftsparen.rc */,
+				66CB990811C9BB73006637CE /* fulltest.tcl */,
+				66CD7EC71192012A009D068D /* manifest */,
+				66CD7EC81192012A009D068D /* manifest.uuid */,
+				66593ED1128CB6F3003023FC /* memdebug.rc */,
+				66593ED2128CB6F3003023FC /* min.rc */,
+				6627335A150FED85001129DF /* mingw-cross.rc */,
+				66CD7EC91192012A009D068D /* mingw.rc */,
+				6627335B150FED85001129DF /* mkdevkit.sh */,
+				6627335C150FED85001129DF /* mksession.sh */,
+				66CD7ECD1192012A009D068D /* mkth3.tcl */,
+				6627335D150FED85001129DF /* mkzipvfs-debug.sh */,
+				6627335E150FED85001129DF /* mkzipvfs.sh */,
+				66CD7ECE1192012A009D068D /* msvc.rc */,
+				6627335F150FED85001129DF /* nx_compress.c */,
+				66273360150FED85001129DF /* obfuscate.c */,
+				66CD7ECF1192012A009D068D /* README.txt */,
+				66CD7ED01192012A009D068D /* README.wince.txt */,
+				66CD7ED11192012A009D068D /* releasetest.sh */,
+				66CD7EFD1192012A009D068D /* script.c */,
+				66CD7EFE1192012A009D068D /* see.rc */,
+				66273361150FED85001129DF /* session.rc */,
+				66273362150FED85001129DF /* speedtest.rc */,
+				66CB990911C9BB73006637CE /* test-ex.rc */,
+				66CD7F411192012A009D068D /* test.rc */,
+				66CD7F421192012A009D068D /* th3_alt_os.h.wince */,
+				66CD7F431192012A009D068D /* th3make */,
+				66273363150FED85001129DF /* vfs-cov.rc */,
+				66273364150FED85001129DF /* win32heap.rc */,
+				66273365150FED86001129DF /* zipvfs.rc */,
 			);
 			path = th3_public_source;
 			sourceTree = "<group>";
@@ -2926,6 +3037,9 @@
 		66CD7C3D11920129009D068D /* bugs */ = {
 			isa = PBXGroup;
 			children = (
+				6627333E150FEB24001129DF /* 2010-09-27.test */,
+				6627333F150FEB24001129DF /* 2010-12-06.test */,
+				66273340150FEB24001129DF /* 2011-09-16.test */,
 				66BA821E1211C548001B8B25 /* 2010-03-05a.test */,
 				66BA821F1211C548001B8B25 /* 2010-04-15.test */,
 				66CD7C3E11920129009D068D /* 2009-03-18.test */,
@@ -2948,6 +3062,8 @@
 		66CD7C4B11920129009D068D /* cfg */ = {
 			isa = PBXGroup;
 			children = (
+				66273342150FEC4A001129DF /* cH.cfg */,
+				66273341150FEBED001129DF /* wal1.cfg */,
 				66D0E57013E348E400013412 /* cG.cfg */,
 				66D0E57113E348E400013412 /* dotlock.cfg */,
 				66D0E57213E348E400013412 /* eintr1.cfg */,
@@ -2971,7 +3087,6 @@
 				66CD7C5911920129009D068D /* cE.cfg */,
 				66CD7C5A11920129009D068D /* cF.cfg */,
 				66CD7C5B11920129009D068D /* oom1.cfg */,
-				66CD7C5C11920129009D068D /* u1.cfg */,
 			);
 			path = cfg;
 			sourceTree = "<group>";
@@ -2979,6 +3094,31 @@
 		66CD7C6211920129009D068D /* cov1 */ = {
 			isa = PBXGroup;
 			children = (
+				6665B0811559C687001DAD9F /* check01.test */,
+				6665B0821559C687001DAD9F /* insert16.test */,
+				6665B0831559C687001DAD9F /* main37.test */,
+				6665B0841559C687001DAD9F /* minmax01.test */,
+				6665B0851559C687001DAD9F /* pragma24.test */,
+				6665B0861559C687001DAD9F /* rtree01.test */,
+				6665B0871559C687001DAD9F /* typeof01.test */,
+				6665B0881559C687001DAD9F /* where32.test */,
+				66273343150FEC7A001129DF /* backup14.test */,
+				66273344150FEC7A001129DF /* bigfile01.test */,
+				66273345150FEC7A001129DF /* btree73.test */,
+				66273346150FEC7A001129DF /* btree74.test */,
+				66273347150FEC7A001129DF /* btree75.test */,
+				66273348150FEC7A001129DF /* fkey22.test */,
+				66273349150FEC7A001129DF /* main36.test */,
+				6627334A150FEC7A001129DF /* pcache04.test */,
+				6627334B150FEC7A001129DF /* select34.test */,
+				6627334C150FEC7A001129DF /* sort01.test */,
+				6627334D150FEC7A001129DF /* sort02.test */,
+				6627334E150FEC7A001129DF /* sort03.test */,
+				6627334F150FEC7A001129DF /* wal37.test */,
+				66273350150FEC7B001129DF /* walcrash01.test */,
+				66273351150FEC7B001129DF /* where29.test */,
+				66273352150FEC7B001129DF /* where30.test */,
+				66273353150FEC7B001129DF /* where31.test */,
 				66D0E57713E3490200013412 /* analyze09.test */,
 				66D0E57813E3490200013412 /* analyze10.test */,
 				66D0E57913E3490200013412 /* analyze11.test */,
@@ -3688,20 +3828,11 @@
 		66CD7EB11192012A009D068D /* extra1 */ = {
 			isa = PBXGroup;
 			children = (
-				66D0E59313E3491B00013412 /* zipvfs1.cfg */,
-				66D0E59413E3491B00013412 /* zipvfs2.cfg */,
-				66D0E59513E3491B00013412 /* zipvfs3.cfg */,
-				66593EE0128CB746003023FC /* wal3.cfg */,
+				6665B0891559C690001DAD9F /* reparse01.test */,
+				66273354150FECA0001129DF /* crash01.test */,
 				66BA824B1211C593001B8B25 /* dup_where.test */,
 				66BA824C1211C593001B8B25 /* epager01.test */,
-				66BA824D1211C593001B8B25 /* no_journal_opt_01.test */,
-				66BA824E1211C593001B8B25 /* speed1.cfg */,
-				66BA824F1211C593001B8B25 /* speed1p.test */,
-				66BA82501211C593001B8B25 /* wal1.cfg */,
-				66BA82511211C593001B8B25 /* wal2.cfg */,
 				66CB990C11C9BBAD006637CE /* expire_pragma.test */,
-				66CB990D11C9BBAD006637CE /* release_mem_win.test */,
-				66CB990E11C9BBAD006637CE /* release_mem.test */,
 				66CD7EB21192012A009D068D /* fkey01.test */,
 				66CD7EB31192012A009D068D /* fkey02.test */,
 				66CD7EB41192012A009D068D /* fkey03.test */,
@@ -3709,6 +3840,19 @@
 				66CD7EB61192012A009D068D /* fkey05.test */,
 				66CD7EB71192012A009D068D /* fts3_01.test */,
 				66CD7EB81192012A009D068D /* func01.test */,
+				66BA824D1211C593001B8B25 /* no_journal_opt_01.test */,
+				66CB990E11C9BBAD006637CE /* release_mem.test */,
+				66CB990D11C9BBAD006637CE /* release_mem_win.test */,
+				66273355150FECA0001129DF /* sectorsize01.test */,
+				66BA824E1211C593001B8B25 /* speed1.cfg */,
+				66BA824F1211C593001B8B25 /* speed1p.test */,
+				66273356150FECA0001129DF /* speed1wal.cfg */,
+				66BA82511211C593001B8B25 /* wal2.cfg */,
+				66593EE0128CB746003023FC /* wal3.cfg */,
+				66273357150FECA0001129DF /* walcrash02.test */,
+				66D0E59313E3491B00013412 /* zipvfs1.cfg */,
+				66D0E59413E3491B00013412 /* zipvfs2.cfg */,
+				66D0E59513E3491B00013412 /* zipvfs3.cfg */,
 			);
 			path = extra1;
 			sourceTree = "<group>";
@@ -3716,6 +3860,7 @@
 		66CD7EBA1192012A009D068D /* fts */ = {
 			isa = PBXGroup;
 			children = (
+				6665B07F1559C648001DAD9F /* fts4tokenize01.test */,
 				66D0E59613E3492800013412 /* fts4compress01.test */,
 				66D0E59713E3492800013412 /* genesis-data.tcl */,
 				66D0E59813E3492800013412 /* genesis1-data.tcl */,
@@ -4030,13 +4175,6 @@
 		6812019009CFF384007D44CD /* src */ = {
 			isa = PBXGroup;
 			children = (
-				82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */,
-				82838F3913AE9BC600BE9AA2 /* test_multiplex.h */,
-				82838F3A13AE9BC600BE9AA2 /* test_syscall.c */,
-				82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */,
-				82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */,
-				66ABFBFA11D493B800404FCA /* wal.c */,
-				66ABFBFB11D493B800404FCA /* wal.h */,
 				6670FB960E5617B200B315E8 /* alter.c */,
 				6670FB970E5617B200B315E8 /* analyze.c */,
 				6670FB980E5617B200B315E8 /* attach.c */,
@@ -4103,8 +4241,8 @@
 				6670FBCA0E5617B200B315E8 /* select.c */,
 				6670FBCB0E5617B200B315E8 /* shell.c */,
 				6670FBCC0E5617B200B315E8 /* sqlite.h.in */,
-				6670FBCD0E5617B200B315E8 /* sqlite3ext.h */,
 				6673AFD410FFC744002B0816 /* sqlite3_private.h */,
+				6670FBCD0E5617B200B315E8 /* sqlite3ext.h */,
 				6670FBCE0E5617B200B315E8 /* sqliteInt.h */,
 				6670FBCF0E5617B200B315E8 /* sqliteLimit.h */,
 				6670FBD00E5617B200B315E8 /* status.c */,
@@ -4119,35 +4257,41 @@
 				6670FBEA0E5617B200B315E8 /* test7.c */,
 				6670FBEB0E5617B200B315E8 /* test8.c */,
 				6670FBEC0E5617B200B315E8 /* test9.c */,
-				660269C910DAA32C00FFDFE3 /* test_intarray.c */,
-				660269CA10DAA32C00FFDFE3 /* test_intarray.h */,
 				6670FBD30E5617B200B315E8 /* test_async.c */,
 				6670FBD40E5617B200B315E8 /* test_autoext.c */,
 				667D26D50F8B0E6800945875 /* test_backup.c */,
 				6670FBD50E5617B200B315E8 /* test_btree.c */,
 				6670FBD60E5617B200B315E8 /* test_config.c */,
+				66ABFBF811D493B800404FCA /* test_demovfs.c */,
 				6670FBD70E5617B200B315E8 /* test_devsym.c */,
 				6670FBD80E5617B200B315E8 /* test_func.c */,
+				82838F3813AE9BC600BE9AA2 /* test_fuzzer.c */,
 				6670FBD90E5617B200B315E8 /* test_hexio.c */,
 				66287B3B1084EF1D00AF1277 /* test_init.c */,
+				660269C910DAA32C00FFDFE3 /* test_intarray.c */,
+				660269CA10DAA32C00FFDFE3 /* test_intarray.h */,
 				66C450920F20017D00D0A4DD /* test_journal.c */,
 				6670FBDA0E5617B200B315E8 /* test_loadext.c */,
 				6670FBDB0E5617B200B315E8 /* test_malloc.c */,
 				66E5E2F9130484FF00A3FE37 /* test_multiplex.c */,
-				66E5E2FA130484FF00A3FE37 /* test_quota.c */,
-				66E5E2FB130484FF00A3FE37 /* test_rtree.c */,
-				66E5E2FC130484FF00A3FE37 /* test_superlock.c */,
-				6632FC03120DC4E900CC0A84 /* test_stat.c */,
-				66ABFBF811D493B800404FCA /* test_demovfs.c */,
-				66ABFBF911D493B800404FCA /* test_vfs.c */,
+				82838F3913AE9BC600BE9AA2 /* test_multiplex.h */,
 				6670FBDD0E5617B200B315E8 /* test_mutex.c */,
 				6670FBDE0E5617B200B315E8 /* test_onefile.c */,
 				6670FBDF0E5617B200B315E8 /* test_osinst.c */,
 				66C7260B0F1D21AA00354D3E /* test_pcache.c */,
+				66E5E2FA130484FF00A3FE37 /* test_quota.c */,
+				6652313B14C7539700FD2C58 /* test_quota.h */,
+				66E5E2FB130484FF00A3FE37 /* test_rtree.c */,
 				6670FBE00E5617B200B315E8 /* test_schema.c */,
 				6670FBE10E5617B200B315E8 /* test_server.c */,
+				6632FC03120DC4E900CC0A84 /* test_stat.c */,
+				66E5E2FC130484FF00A3FE37 /* test_superlock.c */,
+				82838F3A13AE9BC600BE9AA2 /* test_syscall.c */,
 				6670FBE20E5617B200B315E8 /* test_tclvar.c */,
 				6670FBE30E5617B200B315E8 /* test_thread.c */,
+				66ABFBF911D493B800404FCA /* test_vfs.c */,
+				82838F3B13AE9BC600BE9AA2 /* test_vfstrace.c */,
+				82838F3C13AE9BC600BE9AA2 /* test_wholenumber.c */,
 				663F618F0EC9437100554C75 /* test_wsd.c */,
 				6670FBED0E5617B200B315E8 /* tokenize.c */,
 				6670FBEE0E5617B200B315E8 /* trigger.c */,
@@ -4162,8 +4306,11 @@
 				6670FBF70E5617B200B315E8 /* vdbeblob.c */,
 				6670FBF90E5617B200B315E8 /* vdbeInt.h */,
 				6670FBFA0E5617B200B315E8 /* vdbemem.c */,
+				6652313C14C7539700FD2C58 /* vdbesort.c */,
 				660269CB10DAA32C00FFDFE3 /* vdbetrace.c */,
 				6670FBFB0E5617B200B315E8 /* vtab.c */,
+				66ABFBFA11D493B800404FCA /* wal.c */,
+				66ABFBFB11D493B800404FCA /* wal.h */,
 				663F61900EC9437100554C75 /* walker.c */,
 				6670FBFC0E5617B200B315E8 /* where.c */,
 			);
@@ -4173,130 +4320,19 @@
 		6812021A09CFF4AD007D44CD /* test */ = {
 			isa = PBXGroup;
 			children = (
-				66CDA3F313B2C7D6009DDFB2 /* fts3auto.test */,
-				66CDA3F413B2C7D6009DDFB2 /* fts3prefix.test */,
-				66CDA3F513B2C7D6009DDFB2 /* tkt-bd484a090c.test */,
+				66A73CCB152A59D60088A048 /* bc_common.tcl */,
+				66A73CCC152A59D70088A048 /* corruptF.test */,
+				66A73CCD152A59D70088A048 /* fts3prefix2.test */,
+				66A73CCE152A59D70088A048 /* fts4check.test */,
+				66A73CCF152A59D70088A048 /* fts4langid.test */,
+				66A73CD0152A59D70088A048 /* fts4merge.test */,
+				66A73CD1152A59D70088A048 /* fts4merge2.test */,
+				66A73CD2152A59D70088A048 /* fts4merge3.test */,
+				66A73CD3152A59D70088A048 /* fuzzerfault.test */,
+				66A73CD4152A59D70088A048 /* incrblob4.test */,
+				66A73CD5152A59D70088A048 /* minmax4.test */,
+				66A73CD6152A59D70088A048 /* wal8.test */,
 				82838F5413AEACA400BE9AA2 /* 8_3_names.test */,
-				82838F5513AEACA400BE9AA2 /* analyze5.test */,
-				82838F5613AEACA400BE9AA2 /* analyze6.test */,
-				82838F5713AEACA400BE9AA2 /* analyze7.test */,
-				82838F5813AEACA400BE9AA2 /* attach4.test */,
-				82838F5913AEACA400BE9AA2 /* badutf2.test */,
-				82838F5A13AEACA400BE9AA2 /* e_uri.test */,
-				82838F5B13AEACA400BE9AA2 /* exists.test */,
-				82838F5C13AEACA400BE9AA2 /* fkey4.test */,
-				82838F5D13AEACA400BE9AA2 /* fts3aux1.test */,
-				82838F5E13AEACA400BE9AA2 /* fts3comp1.test */,
-				82838F5F13AEACA400BE9AA2 /* fts3conf.test */,
-				82838F6013AEACA400BE9AA2 /* fts3fault2.test */,
-				82838F6113AEACA400BE9AA2 /* fts3sort.test */,
-				82838F6213AEACA400BE9AA2 /* fuzzer1.test */,
-				82838F6313AEACA400BE9AA2 /* mem5.test */,
-				82838F6413AEACA400BE9AA2 /* oserror.test */,
-				82838F6513AEACA400BE9AA2 /* syscall.test */,
-				82838F6613AEACA400BE9AA2 /* sysfault.test */,
-				82838F6713AEACA400BE9AA2 /* tkt-2d1a5c67d.test */,
-				82838F6813AEACA400BE9AA2 /* tkt-752e1646fc.test */,
-				82838F6913AEACA400BE9AA2 /* tkt-b72787b1.test */,
-				82838F6A13AEACA400BE9AA2 /* tkt-f7b4edec.test */,
-				82838F6B13AEACA400BE9AA2 /* tt3_checkpoint.c */,
-				82838F6C13AEACA400BE9AA2 /* unixexcl.test */,
-				82838F6D13AEACA400BE9AA2 /* unordered.test */,
-				82838F6E13AEACA400BE9AA2 /* uri.test */,
-				82838F6F13AEACA400BE9AA2 /* wal5.test */,
-				82838F7013AEACA400BE9AA2 /* wal7.test */,
-				82838F7113AEACA400BE9AA2 /* walro.test */,
-				66E5E3051304853E00A3FE37 /* analyze4.test */,
-				66E5E3061304853E00A3FE37 /* avtrans.test */,
-				66E5E3071304853E00A3FE37 /* capi3e.test */,
-				66E5E3081304853E00A3FE37 /* e_createtable.test */,
-				66E5E3091304853E00A3FE37 /* e_delete.test */,
-				66E5E30A1304853E00A3FE37 /* e_droptrigger.test */,
-				66E5E30B1304853E00A3FE37 /* e_dropview.test */,
-				66E5E30C1304853E00A3FE37 /* e_insert.test */,
-				66E5E30D1304853E00A3FE37 /* e_reindex.test */,
-				66E5E30E1304853E00A3FE37 /* e_resolve.test */,
-				66E5E30F1304853E00A3FE37 /* e_select.test */,
-				66E5E3101304853E00A3FE37 /* e_select2.test */,
-				66E5E3111304853E00A3FE37 /* e_update.test */,
-				66E5E3121304853E00A3FE37 /* e_vacuum.test */,
-				66E5E3131304853E00A3FE37 /* enc4.test */,
-				66E5E3141304853F00A3FE37 /* eqp.test */,
-				66E5E3151304853F00A3FE37 /* fts3corrupt.test */,
-				66E5E3161304853F00A3FE37 /* fts3corrupt2.test */,
-				66E5E3171304853F00A3FE37 /* fts3defer.test */,
-				66E5E3181304853F00A3FE37 /* fts3defer2.test */,
-				66E5E3191304853F00A3FE37 /* fts3fault.test */,
-				66E5E31A1304853F00A3FE37 /* fts3matchinfo.test */,
-				66E5E31B1304853F00A3FE37 /* fts3shared.test */,
-				66E5E31C1304853F00A3FE37 /* func3.test */,
-				66E5E31D1304853F00A3FE37 /* incrblob3.test */,
-				66E5E31E1304853F00A3FE37 /* incrblobfault.test */,
-				66E5E31F1304853F00A3FE37 /* multiplex.test */,
-				66E5E3201304853F00A3FE37 /* pagerfault3.test */,
-				66E5E3211304853F00A3FE37 /* quota.test */,
-				66E5E3221304853F00A3FE37 /* releasetest.mk */,
-				66E5E3231304853F00A3FE37 /* releasetest.tcl */,
-				66E5E3241304853F00A3FE37 /* schema4.test */,
-				66E5E3251304853F00A3FE37 /* superlock.test */,
-				66E5E3261304853F00A3FE37 /* tkt-5d863f876e.test */,
-				66E5E3271304853F00A3FE37 /* tkt-38cb5df375.test */,
-				66E5E3281304853F00A3FE37 /* tkt-80ba201079.test */,
-				66E5E3291304853F00A3FE37 /* tkt-8454a207b9.test */,
-				66E5E32A1304853F00A3FE37 /* tkt-313723c356.test */,
-				66E5E32B1304853F00A3FE37 /* tkt-3998683a16.test */,
-				66E5E32C1304853F00A3FE37 /* tkt-b351d95f9.test */,
-				66E5E32D1304853F00A3FE37 /* trace2.test */,
-				66E5E32E1304853F00A3FE37 /* wal6.test */,
-				66E5E32F1304853F00A3FE37 /* walnoshm.test */,
-				8223BBBD1238C3AE007E60C9 /* backcompat.test */,
-				8223BBBE1238C3AE007E60C9 /* fallocate.test */,
-				8223BBBF1238C3AE007E60C9 /* pager3.test */,
-				8223BBC01238C3AE007E60C9 /* threadtest3.c */,
-				8223BBC11238C3AE007E60C9 /* tkt-5e10420e8d.test */,
-				8223BBC21238C3AE007E60C9 /* tkt-f3e5abed55.test */,
-				8223BBC31238C3AE007E60C9 /* walshared.test */,
-				6632FC06120DC4FF00CC0A84 /* apple_custom.test */,
-				6632FC07120DC4FF00CC0A84 /* e_expr.test */,
-				6632FC08120DC4FF00CC0A84 /* journal3.test */,
-				6632FC09120DC4FF00CC0A84 /* notify3.test */,
-				6632FC0A120DC4FF00CC0A84 /* pagerfault2.test */,
-				6632FC0B120DC4FF00CC0A84 /* schema3.test */,
-				6632FC0C120DC4FF00CC0A84 /* stat.test */,
-				6632FC0D120DC4FF00CC0A84 /* tkt-80e031a00f.test */,
-				6632FC0E120DC4FF00CC0A84 /* tkt-d11f09d36e.test */,
-				6632FC0F120DC4FF00CC0A84 /* wal4.test */,
-				6632FC10120DC4FF00CC0A84 /* walbig.test */,
-				66ABFC3511D4A28200404FCA /* lock_common.tcl */,
-				66ABFC0311D493D900404FCA /* autoindex1.test */,
-				66ABFC0411D493D900404FCA /* dbstatus.test */,
-				66ABFC0511D493D900404FCA /* journal2.test */,
-				66ABFC0611D493D900404FCA /* pager1.test */,
-				66ABFC0711D493D900404FCA /* pager2.test */,
-				66ABFC0811D493D900404FCA /* pagerfault.test */,
-				66ABFC0911D493D900404FCA /* tkt-02a8e81d44.test */,
-				66ABFC0A11D493DA00404FCA /* tkt-9d68c883.test */,
-				66ABFC0B11D493DA00404FCA /* tkt-26ff0c2d1e.test */,
-				66ABFC0C11D493DA00404FCA /* tkt-cbd054fa6b.test */,
-				66ABFC0D11D493DA00404FCA /* tkt-f973c7ac31.test */,
-				66ABFC0E11D493DA00404FCA /* tkt-fc62af4523.test */,
-				66ABFC0F11D493DA00404FCA /* wal_common.tcl */,
-				66ABFC1011D493DA00404FCA /* wal.test */,
-				66ABFC1111D493DA00404FCA /* wal2.test */,
-				66ABFC1211D493DA00404FCA /* wal3.test */,
-				66ABFC1311D493DA00404FCA /* walbak.test */,
-				66ABFC1411D493DA00404FCA /* walcksum.test */,
-				66ABFC1511D493DA00404FCA /* walcrash.test */,
-				66ABFC1611D493DA00404FCA /* walcrash2.test */,
-				66ABFC1711D493DA00404FCA /* walfault.test */,
-				66ABFC1811D493DA00404FCA /* walhook.test */,
-				66ABFC1911D493DA00404FCA /* walmode.test */,
-				66ABFC1A11D493DA00404FCA /* walslow.test */,
-				66ABFC1B11D493DA00404FCA /* walthread.test */,
-				66CB990211C9B964006637CE /* corruptE.test */,
-				66CB990311C9B964006637CE /* ctime.test */,
-				66CB990411C9B964006637CE /* stmt.test */,
-				66CB990511C9B964006637CE /* vacuum4.test */,
 				6670FBFD0E561AFA00B315E8 /* aggerror.test */,
 				663F61910EC9439200554C75 /* alias.test */,
 				6670FBFE0E561AFA00B315E8 /* all.test */,
@@ -4306,8 +4342,13 @@
 				667D26D70F8B0ED200945875 /* alter4.test */,
 				6670FC020E561AFA00B315E8 /* altermalloc.test */,
 				6670FC030E561AFA00B315E8 /* analyze.test */,
-				66287B551084F1E300AF1277 /* analyze2.test */,
 				660269D210DAA3C300FFDFE3 /* analyze3.test */,
+				66E5E3051304853E00A3FE37 /* analyze4.test */,
+				82838F5513AEACA400BE9AA2 /* analyze5.test */,
+				82838F5613AEACA400BE9AA2 /* analyze6.test */,
+				82838F5713AEACA400BE9AA2 /* analyze7.test */,
+				6652314114C7541C00FD2C58 /* analyze8.test */,
+				6632FC06120DC4FF00CC0A84 /* apple_custom.test */,
 				6670FC040E561AFA00B315E8 /* async.test */,
 				6670FC050E561AFA00B315E8 /* async2.test */,
 				6670FC060E561AFA00B315E8 /* async3.test */,
@@ -4316,21 +4357,26 @@
 				6670FC070E561AFA00B315E8 /* attach.test */,
 				6670FC080E561AFA00B315E8 /* attach2.test */,
 				6670FC090E561AFA00B315E8 /* attach3.test */,
+				82838F5813AEACA400BE9AA2 /* attach4.test */,
 				6670FC0A0E561AFA00B315E8 /* attachmalloc.test */,
 				6670FC0B0E561AFA00B315E8 /* auth.test */,
 				6670FC0C0E561AFA00B315E8 /* auth2.test */,
 				66C726100F1D21F500354D3E /* auth3.test */,
 				6670FC0D0E561AFA00B315E8 /* autoinc.test */,
+				66ABFC0311D493D900404FCA /* autoindex1.test */,
 				6670FC0F0E561AFA00B315E8 /* autovacuum.test */,
 				6670FC0E0E561AFA00B315E8 /* autovacuum_ioerr2.test */,
-				6670FC100E561AFA00B315E8 /* avtrans91.test */,
+				66E5E3061304853E00A3FE37 /* avtrans.test */,
+				8223BBBD1238C3AE007E60C9 /* backcompat.test */,
 				667D26DA0F8B0ED200945875 /* backup.test */,
 				667D26DB0F8B0ED200945875 /* backup2.test */,
 				667D26D80F8B0ED200945875 /* backup_ioerr.test */,
 				667D26D90F8B0ED200945875 /* backup_malloc.test */,
 				6670FC110E561AFA00B315E8 /* badutf.test */,
+				82838F5913AEACA400BE9AA2 /* badutf2.test */,
 				6670FC120E561AFA00B315E8 /* between.test */,
 				6670FC130E561AFA00B315E8 /* bigfile.test */,
+				6652314214C7541C00FD2C58 /* bigfile2.test */,
 				6670FC140E561AFA00B315E8 /* bigrow.test */,
 				663F61920EC9439200554C75 /* bind.test */,
 				6670FC160E561AFA00B315E8 /* bindxfer.test */,
@@ -4352,6 +4398,7 @@
 				6670FC1D0E561AFA00B315E8 /* capi3b.test */,
 				6670FC1E0E561AFA00B315E8 /* capi3c.test */,
 				6670FC1F0E561AFA00B315E8 /* capi3d.test */,
+				66E5E3071304853E00A3FE37 /* capi3e.test */,
 				6670FC200E561AFA00B315E8 /* cast.test */,
 				6670FC210E561AFA00B315E8 /* check.test */,
 				660269D310DAA3C300FFDFE3 /* coalesce.test */,
@@ -4381,6 +4428,7 @@
 				663F61930EC9439200554C75 /* corruptB.test */,
 				66C726190F1D21F500354D3E /* corruptC.test */,
 				66287B581084F1E300AF1277 /* corruptD.test */,
+				66CB990211C9B964006637CE /* corruptE.test */,
 				667D26DC0F8B0ED200945875 /* count.test */,
 				6670FC390E561AFA00B315E8 /* crash.test */,
 				6670FC3A0E561AFA00B315E8 /* crash2.test */,
@@ -4393,7 +4441,10 @@
 				6670FC400E561AFA00B315E8 /* crashtest1.c */,
 				6670FC410E561AFA00B315E8 /* createtab.test */,
 				6670FC420E561AFA00B315E8 /* cse.test */,
+				66CB990311C9B964006637CE /* ctime.test */,
 				6670FC430E561AFA00B315E8 /* date.test */,
+				66ABFC0411D493D900404FCA /* dbstatus.test */,
+				6652314314C7541C00FD2C58 /* dbstatus2.test */,
 				6670FC440E561AFA00B315E8 /* default.test */,
 				6670FC450E561AFA00B315E8 /* delete.test */,
 				6670FC460E561AFA00B315E8 /* delete2.test */,
@@ -4402,24 +4453,45 @@
 				6670FC490E561AFA00B315E8 /* descidx2.test */,
 				6670FC4A0E561AFA00B315E8 /* descidx3.test */,
 				6670FC4B0E561AFA00B315E8 /* diskfull.test */,
+				6652314414C7541C00FD2C58 /* distinct.test */,
 				6670FC4C0E561AFA00B315E8 /* distinctagg.test */,
+				66E5E3081304853E00A3FE37 /* e_createtable.test */,
+				66E5E3091304853E00A3FE37 /* e_delete.test */,
+				66E5E30A1304853E00A3FE37 /* e_droptrigger.test */,
+				66E5E30B1304853E00A3FE37 /* e_dropview.test */,
+				6632FC07120DC4FF00CC0A84 /* e_expr.test */,
 				66287B591084F1E300AF1277 /* e_fkey.test */,
 				660269D410DAA3C300FFDFE3 /* e_fts3.test */,
+				66E5E30C1304853E00A3FE37 /* e_insert.test */,
+				66E5E30D1304853E00A3FE37 /* e_reindex.test */,
+				66E5E30E1304853E00A3FE37 /* e_resolve.test */,
+				66E5E30F1304853E00A3FE37 /* e_select.test */,
+				66E5E3101304853E00A3FE37 /* e_select2.test */,
+				66E5E3111304853E00A3FE37 /* e_update.test */,
+				82838F5A13AEACA400BE9AA2 /* e_uri.test */,
+				66E5E3121304853E00A3FE37 /* e_vacuum.test */,
 				6670FC4D0E561AFA00B315E8 /* enc.test */,
 				6670FC4E0E561AFA00B315E8 /* enc2.test */,
 				6670FC4F0E561AFA00B315E8 /* enc3.test */,
+				66E5E3131304853E00A3FE37 /* enc4.test */,
+				66E5E3141304853F00A3FE37 /* eqp.test */,
+				6652314514C7541C00FD2C58 /* errmsg.test */,
 				6670FC500E561AFA00B315E8 /* eval.test */,
 				6670FC510E561AFA00B315E8 /* exclusive.test */,
 				6670FC520E561AFA00B315E8 /* exclusive2.test */,
 				6670FC530E561AFA00B315E8 /* exec.test */,
+				82838F5B13AEACA400BE9AA2 /* exists.test */,
 				6670FC540E561AFA00B315E8 /* expr.test */,
+				8223BBBE1238C3AE007E60C9 /* fallocate.test */,
 				6670FC550E561AFA00B315E8 /* filectrl.test */,
 				6670FC560E561AFA00B315E8 /* filefmt.test */,
 				6670FC570E561AFA00B315E8 /* fkey1.test */,
 				66287B5B1084F1E300AF1277 /* fkey2.test */,
 				66287B5C1084F1E300AF1277 /* fkey3.test */,
+				82838F5C13AEACA400BE9AA2 /* fkey4.test */,
 				66287B5A1084F1E300AF1277 /* fkey_malloc.test */,
 				6670FC580E561AFA00B315E8 /* format4.test */,
+				6652314614C7541C00FD2C58 /* fts-9fd058691.test */,
 				6670FC590E561AFA00B315E8 /* fts1a.test */,
 				6670FC5A0E561AFA00B315E8 /* fts1b.test */,
 				6670FC5B0E561AFA00B315E8 /* fts1c.test */,
@@ -4472,26 +4544,45 @@
 				6670FC890E561AFA00B315E8 /* fts3an.test */,
 				6670FC8A0E561AFA00B315E8 /* fts3ao.test */,
 				6670FC8B0E561AFA00B315E8 /* fts3atoken.test */,
+				66CDA3F313B2C7D6009DDFB2 /* fts3auto.test */,
+				82838F5D13AEACA400BE9AA2 /* fts3aux1.test */,
 				6670FC8C0E561AFA00B315E8 /* fts3b.test */,
 				6670FC8D0E561AFA00B315E8 /* fts3c.test */,
+				82838F5E13AEACA400BE9AA2 /* fts3comp1.test */,
+				82838F5F13AEACA400BE9AA2 /* fts3conf.test */,
+				66E5E3151304853F00A3FE37 /* fts3corrupt.test */,
+				66E5E3161304853F00A3FE37 /* fts3corrupt2.test */,
 				660269D610DAA3C300FFDFE3 /* fts3cov.test */,
 				6670FC8E0E561AFA00B315E8 /* fts3d.test */,
+				66E5E3171304853F00A3FE37 /* fts3defer.test */,
+				66E5E3181304853F00A3FE37 /* fts3defer2.test */,
+				6652314714C7541C00FD2C58 /* fts3drop.test */,
 				6670FC8F0E561AFA00B315E8 /* fts3e.test */,
 				66C450950F2001B200D0A4DD /* fts3expr.test */,
 				66C450960F2001B200D0A4DD /* fts3expr2.test */,
+				66E5E3191304853F00A3FE37 /* fts3fault.test */,
+				82838F6013AEACA400BE9AA2 /* fts3fault2.test */,
+				6652314814C7541C00FD2C58 /* fts3first.test */,
 				660269D710DAA3C300FFDFE3 /* fts3malloc.test */,
+				66E5E31A1304853F00A3FE37 /* fts3matchinfo.test */,
 				6670FC900E561AFA00B315E8 /* fts3near.test */,
+				66CDA3F413B2C7D6009DDFB2 /* fts3prefix.test */,
 				6627C51211067F92002F0642 /* fts3query.test */,
 				660269D810DAA3C300FFDFE3 /* fts3rnd.test */,
+				66E5E31B1304853F00A3FE37 /* fts3shared.test */,
 				66EC744711387BE400FEFCCF /* fts3snippet.test */,
+				82838F6113AEACA400BE9AA2 /* fts3sort.test */,
 				66EC744811387BE400FEFCCF /* fts4aa.test */,
+				6652314914C7541C00FD2C58 /* fts4content.test */,
 				6670FC910E561AFA00B315E8 /* func.test */,
 				660269D910DAA3C300FFDFE3 /* func2.test */,
+				66E5E31C1304853F00A3FE37 /* func3.test */,
 				6670FC940E561AFA00B315E8 /* fuzz.test */,
 				6670FC950E561AFA00B315E8 /* fuzz2.test */,
 				663F61940EC9439200554C75 /* fuzz3.test */,
 				6670FC920E561AFA00B315E8 /* fuzz_common.tcl */,
 				6670FC930E561AFA00B315E8 /* fuzz_malloc.test */,
+				82838F6213AEACA400BE9AA2 /* fuzzer1.test */,
 				6670FC960E561AFA00B315E8 /* hook.test */,
 				6670FC970E561AFA00B315E8 /* icu.test */,
 				6670FC980E561AFA00B315E8 /* in.test */,
@@ -4500,14 +4591,18 @@
 				663F61950EC9439200554C75 /* in4.test */,
 				6670FC9C0E561AFA00B315E8 /* incrblob.test */,
 				6670FC9D0E561AFA00B315E8 /* incrblob2.test */,
+				66E5E31D1304853F00A3FE37 /* incrblob3.test */,
 				6670FC9B0E561AFA00B315E8 /* incrblob_err.test */,
+				66E5E31E1304853F00A3FE37 /* incrblobfault.test */,
 				6670FC9F0E561AFA00B315E8 /* incrvacuum.test */,
 				6670FCA00E561AFA00B315E8 /* incrvacuum2.test */,
 				6670FC9E0E561AFA00B315E8 /* incrvacuum_ioerr.test */,
 				6670FCA10E561AFA00B315E8 /* index.test */,
 				6670FCA20E561AFA00B315E8 /* index2.test */,
 				6670FCA30E561AFA00B315E8 /* index3.test */,
+				6652314A14C7541C00FD2C58 /* index4.test */,
 				663F61960EC9439200554C75 /* indexedby.test */,
+				6652314B14C7541C00FD2C58 /* indexfault.test */,
 				66287B5D1084F1E300AF1277 /* init.test */,
 				6670FCA40E561AFA00B315E8 /* insert.test */,
 				6670FCA50E561AFA00B315E8 /* insert2.test */,
@@ -4530,6 +4625,8 @@
 				6670FCB50E561AFA00B315E8 /* join5.test */,
 				660269DB10DAA3C300FFDFE3 /* join6.test */,
 				6670FCB60E561AFA00B315E8 /* journal1.test */,
+				66ABFC0511D493D900404FCA /* journal2.test */,
+				6632FC08120DC4FF00CC0A84 /* journal3.test */,
 				6670FCB70E561AFA00B315E8 /* jrnlmode.test */,
 				667D26DD0F8B0ED200945875 /* jrnlmode2.test */,
 				66287B5E1084F1E300AF1277 /* jrnlmode3.test */,
@@ -4548,6 +4645,7 @@
 				6670FCC30E561AFA00B315E8 /* lock5.test */,
 				6620F3520E9F359500CA69B0 /* lock6.test */,
 				66C7261A0F1D21F500354D3E /* lock7.test */,
+				66ABFC3511D4A28200404FCA /* lock_common.tcl */,
 				66287B5F1084F1E300AF1277 /* lock_proxy.test */,
 				6670FCC40E561AFA00B315E8 /* lookaside.test */,
 				6670FCC50E561AFA00B315E8 /* main.test */,
@@ -4574,6 +4672,7 @@
 				663F61970EC9439200554C75 /* mallocJ.test */,
 				66C450980F2001B200D0A4DD /* mallocK.test */,
 				6670FCD90E561AFA00B315E8 /* manydb.test */,
+				82838F6313AEACA400BE9AA2 /* mem5.test */,
 				6670FCDA0E561AFA00B315E8 /* memdb.test */,
 				6670FCDB0E561AFA00B315E8 /* memleak.test */,
 				6670FCDC0E561AFA00B315E8 /* memsubsys1.test */,
@@ -4589,14 +4688,25 @@
 				6670FCE60E561AFA00B315E8 /* misc6.test */,
 				6670FCE70E561AFA00B315E8 /* misc7.test */,
 				6670FCE80E561AFA00B315E8 /* misuse.test */,
+				66E5E31F1304853F00A3FE37 /* multiplex.test */,
+				6652314C14C7541C00FD2C58 /* multiplex2.test */,
+				6652314D14C7541C00FD2C58 /* multiplex3.test */,
 				6670FCE90E561AFA00B315E8 /* mutex1.test */,
 				6670FCEA0E561AFA00B315E8 /* mutex2.test */,
 				6670FCEB0E561AFA00B315E8 /* nan.test */,
 				667D26DF0F8B0ED200945875 /* notify1.test */,
 				667D26E00F8B0ED200945875 /* notify2.test */,
+				6632FC09120DC4FF00CC0A84 /* notify3.test */,
 				6670FCEC0E561AFA00B315E8 /* notnull.test */,
 				6670FCED0E561AFA00B315E8 /* null.test */,
 				6670FCEE0E561AFA00B315E8 /* openv2.test */,
+				82838F6413AEACA400BE9AA2 /* oserror.test */,
+				66ABFC0611D493D900404FCA /* pager1.test */,
+				66ABFC0711D493D900404FCA /* pager2.test */,
+				8223BBBF1238C3AE007E60C9 /* pager3.test */,
+				66ABFC0811D493D900404FCA /* pagerfault.test */,
+				6632FC0A120DC4FF00CC0A84 /* pagerfault2.test */,
+				66E5E3201304853F00A3FE37 /* pagerfault3.test */,
 				6670FCF20E561AFA00B315E8 /* pageropt.test */,
 				6670FCF30E561AFA00B315E8 /* pagesize.test */,
 				663F61980EC9439200554C75 /* pcache.test */,
@@ -4608,11 +4718,16 @@
 				6670FCF80E561AFA00B315E8 /* progress.test */,
 				6670FCF90E561AFA00B315E8 /* ptrchng.test */,
 				6670FCFA0E561AFA00B315E8 /* quick.test */,
+				6652314E14C7541C00FD2C58 /* quota-glob.test */,
+				66E5E3211304853F00A3FE37 /* quota.test */,
+				6652314F14C7541C00FD2C58 /* quota2.test */,
 				6670FCFB0E561AFA00B315E8 /* quote.test */,
 				66C7261B0F1D21F500354D3E /* randexpr1.tcl */,
 				66C7261C0F1D21F500354D3E /* randexpr1.test */,
 				6670FCFC0E561AFA00B315E8 /* rdonly.test */,
 				6670FCFD0E561AFA00B315E8 /* reindex.test */,
+				66E5E3221304853F00A3FE37 /* releasetest.mk */,
+				66E5E3231304853F00A3FE37 /* releasetest.tcl */,
 				6670FCFE0E561AFA00B315E8 /* rollback.test */,
 				66287B601084F1E300AF1277 /* rowhash.test */,
 				6670FCFF0E561AFA00B315E8 /* rowid.test */,
@@ -4625,6 +4740,8 @@
 				66C4509E0F2001B200D0A4DD /* savepoint6.test */,
 				6670FD020E561AFA00B315E8 /* schema.test */,
 				6670FD030E561AFA00B315E8 /* schema2.test */,
+				6632FC0B120DC4FF00CC0A84 /* schema3.test */,
+				66E5E3241304853F00A3FE37 /* schema4.test */,
 				66EC744911387BE400FEFCCF /* securedel.test */,
 				6670FD040E561AFA00B315E8 /* select1.test */,
 				6670FD050E561AFA00B315E8 /* select2.test */,
@@ -4648,6 +4765,7 @@
 				6670FD100E561AFA00B315E8 /* shared_err.test */,
 				66287B631084F1E300AF1277 /* sharedlock.test */,
 				6670FD150E561AFA00B315E8 /* shortread1.test */,
+				6652315014C7541C00FD2C58 /* shrink.test */,
 				6670FD160E561AFA00B315E8 /* sidedelete.test */,
 				6670FD170E561AFA00B315E8 /* soak.test */,
 				6670FD180E561AFA00B315E8 /* softheap1.test */,
@@ -4661,10 +4779,16 @@
 				6670FD200E561AFA00B315E8 /* speed4p.explain */,
 				6670FD210E561AFA00B315E8 /* speed4p.test */,
 				6670FD220E561AFA00B315E8 /* sqllimits1.test */,
+				6632FC0C120DC4FF00CC0A84 /* stat.test */,
+				66CB990411C9B964006637CE /* stmt.test */,
 				6670FD230E561AFA00B315E8 /* subquery.test */,
+				6652315114C7541C00FD2C58 /* subquery2.test */,
 				6670FD240E561AFA00B315E8 /* subselect.test */,
 				6670FD250E561AFA00B315E8 /* substr.test */,
+				66E5E3251304853F00A3FE37 /* superlock.test */,
 				6670FD260E561AFA00B315E8 /* sync.test */,
+				82838F6513AEACA400BE9AA2 /* syscall.test */,
+				82838F6613AEACA400BE9AA2 /* sysfault.test */,
 				6670FD270E561AFA00B315E8 /* table.test */,
 				6670FD280E561AFA00B315E8 /* tableapi.test */,
 				6670FD290E561AFA00B315E8 /* tclsqlite.test */,
@@ -4682,15 +4806,46 @@
 				6670FD2D0E561AFA00B315E8 /* thread_common.tcl */,
 				6670FD320E561AFA00B315E8 /* threadtest1.c */,
 				6670FD330E561AFA00B315E8 /* threadtest2.c */,
+				8223BBC01238C3AE007E60C9 /* threadtest3.c */,
+				66ABFC0911D493D900404FCA /* tkt-02a8e81d44.test */,
+				66ABFC0B11D493DA00404FCA /* tkt-26ff0c2d1e.test */,
+				82838F6713AEACA400BE9AA2 /* tkt-2d1a5c67d.test */,
 				66287B641084F1E300AF1277 /* tkt-2ea2425d34.test */,
 				660269E010DAA3C300FFDFE3 /* tkt-31338dca7e.test */,
+				66E5E32A1304853F00A3FE37 /* tkt-313723c356.test */,
+				66E5E3271304853F00A3FE37 /* tkt-38cb5df375.test */,
+				66E5E32B1304853F00A3FE37 /* tkt-3998683a16.test */,
+				6652315214C7541C00FD2C58 /* tkt-3a77c9714e.test */,
 				660269DC10DAA3C300FFDFE3 /* tkt-3fe897352e.test */,
 				66287B651084F1E300AF1277 /* tkt-4a03edc4c8.test */,
+				6652315414C7541C00FD2C58 /* tkt-54844eea3f.test */,
+				66E5E3261304853F00A3FE37 /* tkt-5d863f876e.test */,
+				8223BBC11238C3AE007E60C9 /* tkt-5e10420e8d.test */,
 				660269DD10DAA3C300FFDFE3 /* tkt-5ee23731f.test */,
+				82838F6813AEACA400BE9AA2 /* tkt-752e1646fc.test */,
 				660269DE10DAA3C300FFDFE3 /* tkt-78e04e52ea.test */,
+				6652315314C7541C00FD2C58 /* tkt-7bbfb7d442.test */,
+				66E5E3281304853F00A3FE37 /* tkt-80ba201079.test */,
+				6632FC0D120DC4FF00CC0A84 /* tkt-80e031a00f.test */,
+				66E5E3291304853F00A3FE37 /* tkt-8454a207b9.test */,
+				66AE73C514894E3D00A9B8F8 /* tkt-91e2e8ba6f.test */,
 				660269DF10DAA3C300FFDFE3 /* tkt-94c04eaadb.test */,
+				66ABFC0A11D493DA00404FCA /* tkt-9d68c883.test */,
+				6652315514C7541C00FD2C58 /* tkt-b1d3a2e531.test */,
+				66E5E32C1304853F00A3FE37 /* tkt-b351d95f9.test */,
+				82838F6913AEACA400BE9AA2 /* tkt-b72787b1.test */,
+				66CDA3F513B2C7D6009DDFB2 /* tkt-bd484a090c.test */,
+				6652315614C7541C00FD2C58 /* tkt-c48d99d690.test */,
+				66ABFC0C11D493DA00404FCA /* tkt-cbd054fa6b.test */,
+				6632FC0E120DC4FF00CC0A84 /* tkt-d11f09d36e.test */,
+				6652315714C7541C00FD2C58 /* tkt-d635236375.test */,
 				660269E110DAA3C300FFDFE3 /* tkt-d82e3f3721.test */,
+				8223BBC21238C3AE007E60C9 /* tkt-f3e5abed55.test */,
 				660269E210DAA3C300FFDFE3 /* tkt-f777251dc7a.test */,
+				82838F6A13AEACA400BE9AA2 /* tkt-f7b4edec.test */,
+				66ABFC0D11D493DA00404FCA /* tkt-f973c7ac31.test */,
+				6652315814C7541C00FD2C58 /* tkt-fa7bf5ec.test */,
+				66ABFC0E11D493DA00404FCA /* tkt-fc62af4523.test */,
 				6670FD340E561AFA00B315E8 /* tkt1435.test */,
 				6670FD350E561AFA00B315E8 /* tkt1443.test */,
 				6670FD360E561AFA00B315E8 /* tkt1444.test */,
@@ -4777,6 +4932,7 @@
 				66287B761084F1E300AF1277 /* tkt4018.test */,
 				6670FD5C0E561AFA00B315E8 /* tokenize.test */,
 				6670FD5D0E561AFA00B315E8 /* trace.test */,
+				66E5E32D1304853F00A3FE37 /* trace2.test */,
 				6670FD5E0E561AFA00B315E8 /* trans.test */,
 				663F61A30EC9439200554C75 /* trans2.test */,
 				66C726270F1D21F500354D3E /* trans3.test */,
@@ -4793,15 +4949,20 @@
 				6670FD690E561AFA00B315E8 /* triggerB.test */,
 				66287B771084F1E300AF1277 /* triggerC.test */,
 				6627C51311067F92002F0642 /* triggerD.test */,
+				82838F6B13AEACA400BE9AA2 /* tt3_checkpoint.c */,
 				6670FD6A0E561AFA00B315E8 /* types.test */,
 				6670FD6B0E561AFA00B315E8 /* types2.test */,
 				6670FD6C0E561AFA00B315E8 /* types3.test */,
 				6670FD6D0E561AFA00B315E8 /* unique.test */,
+				82838F6C13AEACA400BE9AA2 /* unixexcl.test */,
+				82838F6D13AEACA400BE9AA2 /* unordered.test */,
 				6670FD6E0E561AFA00B315E8 /* update.test */,
+				82838F6E13AEACA400BE9AA2 /* uri.test */,
 				6670FD6F0E561AFA00B315E8 /* utf16align.test */,
 				6670FD700E561AFA00B315E8 /* vacuum.test */,
 				6670FD710E561AFA00B315E8 /* vacuum2.test */,
 				6670FD720E561AFA00B315E8 /* vacuum3.test */,
+				66CB990511C9B964006637CE /* vacuum4.test */,
 				6670FD730E561AFA00B315E8 /* varint.test */,
 				6670FD740E561AFA00B315E8 /* veryquick.test */,
 				6670FD750E561AFA00B315E8 /* view.test */,
@@ -4822,6 +4983,30 @@
 				6670FD840E561AFA00B315E8 /* vtabC.test */,
 				66287B781084F1E300AF1277 /* vtabD.test */,
 				660269E310DAA3C300FFDFE3 /* vtabE.test */,
+				6652315914C7541C00FD2C58 /* vtabF.test */,
+				66ABFC1011D493DA00404FCA /* wal.test */,
+				66ABFC1111D493DA00404FCA /* wal2.test */,
+				66ABFC1211D493DA00404FCA /* wal3.test */,
+				6632FC0F120DC4FF00CC0A84 /* wal4.test */,
+				82838F6F13AEACA400BE9AA2 /* wal5.test */,
+				66E5E32E1304853F00A3FE37 /* wal6.test */,
+				82838F7013AEACA400BE9AA2 /* wal7.test */,
+				66ABFC0F11D493DA00404FCA /* wal_common.tcl */,
+				66ABFC1311D493DA00404FCA /* walbak.test */,
+				6632FC10120DC4FF00CC0A84 /* walbig.test */,
+				66ABFC1411D493DA00404FCA /* walcksum.test */,
+				66ABFC1511D493DA00404FCA /* walcrash.test */,
+				66ABFC1611D493DA00404FCA /* walcrash2.test */,
+				6652315A14C7541C00FD2C58 /* walcrash3.test */,
+				66ABFC1711D493DA00404FCA /* walfault.test */,
+				66ABFC1811D493DA00404FCA /* walhook.test */,
+				66ABFC1911D493DA00404FCA /* walmode.test */,
+				66E5E32F1304853F00A3FE37 /* walnoshm.test */,
+				66AE73C714894E3D00A9B8F8 /* walpersist.test */,
+				82838F7113AEACA400BE9AA2 /* walro.test */,
+				8223BBC31238C3AE007E60C9 /* walshared.test */,
+				66ABFC1A11D493DA00404FCA /* walslow.test */,
+				66ABFC1B11D493DA00404FCA /* walthread.test */,
 				6670FD850E561AFA00B315E8 /* where.test */,
 				6670FD860E561AFA00B315E8 /* where2.test */,
 				6670FD870E561AFA00B315E8 /* where3.test */,
@@ -4834,8 +5019,11 @@
 				66C450A50F2001B200D0A4DD /* where9.test */,
 				667D26EA0F8B0ED200945875 /* whereA.test */,
 				66287B791084F1E300AF1277 /* whereB.test */,
+				6652315B14C7541C00FD2C58 /* whereC.test */,
 				663F61A40EC9439200554C75 /* wherelimit.test */,
+				6652315C14C7541C00FD2C58 /* win32lock.test */,
 				6670FD8B0E561AFA00B315E8 /* zeroblob.test */,
+				6652315D14C7541C00FD2C58 /* zerodamage.test */,
 			);
 			path = test;
 			sourceTree = "<group>";
@@ -4844,35 +5032,34 @@
 			isa = PBXGroup;
 			children = (
 				66CDA3EC13B2C7B2009DDFB2 /* build-shell.sh */,
-				66CDA3ED13B2C7B3009DDFB2 /* getlock.c */,
-				66CDA3EE13B2C7B3009DDFB2 /* rollback-test.c */,
-				66CDA3EF13B2C7B3009DDFB2 /* split-sqlite3c.tcl */,
-				66CDA3F013B2C7B3009DDFB2 /* symbols.sh */,
-				66CDA3F113B2C7B3009DDFB2 /* tostr.awk */,
-				66CDA3F213B2C7B3009DDFB2 /* warnings.sh */,
-				8223BBC41238C457007E60C9 /* shell4.test */,
-				8223BBC51238C457007E60C9 /* shell5.test */,
-				8223BBC61238C457007E60C9 /* showwal.c */,
 				6812038C09CFF555007D44CD /* diffdb.c */,
+				6652315E14C7542E00FD2C58 /* extract.c */,
 				6674E9300B838B59008EE18A /* fragck.tcl */,
 				663F61A60EC943B700554C75 /* genfkey.README */,
 				663F61A70EC943B700554C75 /* genfkey.test */,
+				66CDA3ED13B2C7B3009DDFB2 /* getlock.c */,
 				6812038D09CFF555007D44CD /* lemon.c */,
 				6812038E09CFF555007D44CD /* lempar.c */,
 				6812039209CFF555007D44CD /* mkkeywordhash.c */,
 				6812039309CFF555007D44CD /* mkopts.tcl */,
 				663F61A80EC943B700554C75 /* mkspeedsql.tcl */,
+				6652315F14C7542E00FD2C58 /* mksqlite3c-noext.tcl */,
 				6670FD8C0E561B1000B315E8 /* mksqlite3c.tcl */,
 				660269FD10DAAB7F00FFDFE3 /* mksqlite3h.tcl */,
 				6670FD8D0E561B1000B315E8 /* mksqlite3internalh.tcl */,
+				6652316014C7542E00FD2C58 /* offsets.c */,
 				6812039409CFF555007D44CD /* omittest.tcl */,
 				6812039509CFF555007D44CD /* opcodeDoc.awk */,
 				66EC744C11387C0C00FEFCCF /* restore_jrnl.tcl */,
+				66CDA3EE13B2C7B3009DDFB2 /* rollback-test.c */,
 				660269FE10DAAB7F00FFDFE3 /* shell1.test */,
 				660269FF10DAAB7F00FFDFE3 /* shell2.test */,
 				6627C51111067F76002F0642 /* shell3.test */,
+				8223BBC41238C457007E60C9 /* shell4.test */,
+				8223BBC51238C457007E60C9 /* shell5.test */,
 				6812039709CFF555007D44CD /* showdb.c */,
 				6812039809CFF555007D44CD /* showjournal.c */,
+				8223BBC61238C457007E60C9 /* showwal.c */,
 				6670FD8E0E561B1000B315E8 /* soak1.tcl */,
 				6812039909CFF555007D44CD /* space_used.tcl */,
 				6812039A09CFF555007D44CD /* spaceanal.tcl */,
@@ -4881,7 +5068,13 @@
 				6812039C09CFF555007D44CD /* speedtest2.tcl */,
 				6670FD8F0E561B1000B315E8 /* speedtest8.c */,
 				6670FD900E561B1000B315E8 /* speedtest8inst1.c */,
+				66CDA3EF13B2C7B3009DDFB2 /* split-sqlite3c.tcl */,
+				6652316114C7542E00FD2C58 /* symbols-mingw.sh */,
+				66CDA3F013B2C7B3009DDFB2 /* symbols.sh */,
+				66CDA3F113B2C7B3009DDFB2 /* tostr.awk */,
 				66026A0010DAAB7F00FFDFE3 /* vdbe-compress.tcl */,
+				6652316214C7542E00FD2C58 /* warnings-clang.sh */,
+				66CDA3F213B2C7B3009DDFB2 /* warnings.sh */,
 			);
 			path = tool;
 			sourceTree = "<group>";
@@ -4928,6 +5121,7 @@
 				6634F13D108D14F900A417C2 /* sqlrr.h in Headers */,
 				6673AFDF10FFCD07002B0816 /* sqlite3_private.h in Headers */,
 				66ABFBFF11D493B800404FCA /* wal.h in Headers */,
+				6652313D14C7539700FD2C58 /* test_quota.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5339,6 +5533,7 @@
 				82838F4713AE9E4300BE9AA2 /* fts3_aux.c in Sources */,
 				828D8C081028F45600C4557E /* rtree.c in Sources */,
 				82838F5013AE9E9600BE9AA2 /* icu.c in Sources */,
+				6652313E14C7539700FD2C58 /* vdbesort.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5460,6 +5655,7 @@
 				82838F4413AE9BC600BE9AA2 /* test_wholenumber.c in Sources */,
 				82838F5313AE9F2C00BE9AA2 /* fts3_term.c in Sources */,
 				66CDA3E913B2BEEF009DDFB2 /* fts3_test.c in Sources */,
+				6652313F14C7539700FD2C58 /* vdbesort.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5622,7 +5818,6 @@
 				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
 				CUSTOM_PRIVATE_HEADERS = "${SRCROOT}/public_source/src/sqlite3_private.h";
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				GCC_PREPROCESSOR_DEFINITIONS = "SQLITE_DEBUG=1";
 				"GCC_PREPROCESSOR_DEFINITIONS[sdk=iphonesimulator*][arch=*]" = (
 					"SQLITE_DEBUG=1",
@@ -5652,7 +5847,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1 -DSQLITE_WRITE_WALFRAME_PREBUFFERED=1 -DSQLITE_ENABLE_PERSIST_WAL=1";
 			};
 			name = Debug;
 		};
@@ -5670,7 +5865,6 @@
 				"ARCHS[sdk=iphoneos*]" = armv7;
 				CUSTOM_PRIVATE_HEADERS = "${SRCROOT}/public_source/src/sqlite3_private.h";
 				GCC_OPTIMIZATION_LEVEL = 2;
-				GCC_VERSION = com.apple.compilers.llvmgcc42;
 				"GCC_PREPROCESSOR_DEFINITIONS[sdk=iphonesimulator*][arch=*]" = "TARGET_IPHONE_SIMULATOR=1";
 				GCC_VERSION = "";
 				"GCC_VERSION[sdk=macosx*][arch=*]" = com.apple.compilers.llvm.clang.1_0;
@@ -5696,7 +5890,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1 -DSQLITE_WRITE_WALFRAME_PREBUFFERED=1 -DSQLITE_ENABLE_PERSIST_WAL=1";
 			};
 			name = Release;
 		};
@@ -5742,7 +5936,7 @@
 				PUBLIC_HEADERS_FOLDER_PATH = /usr/include;
 				SQLITE_VERSION_FILE = "$(SRCROOT)/public_source/VERSION";
 				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
-				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1";
+				_APPLE_COMMON_CFLAGS = "-DSQLITE_OMIT_LOAD_EXTENSION=1 -DSQLITE_ENABLE_LOCKING_STYLE=1 -DSQLITE_ENABLE_AUTO_PROFILE=1 -DUSE_PREAD=1  -DSQLITE_THREADSAFE=2 -DSQLITE_MAX_LENGTH=2147483645 -DSQLITE_MAX_VARIABLE_NUMBER=500000  -DSQLITE_ENABLE_APPLE_SPI=1 -DHAVE_USLEEP=1 -DSQLITE_OMIT_AUTORESET=1 -DSQLITE_ENABLE_PURGEABLE_PCACHE=1 -DSQLITE_DEFAULT_CKPTFULLFSYNC=1 -DSQLITE_DEFAULT_WAL_SAFETYLEVEL=2 -DSQLITE_USE_URI=1 -DSQLITE_WRITE_WALFRAME_PREBUFFERED=1 -DSQLITE_ENABLE_PERSIST_WAL=1";
 			};
 			name = Debug_Embedded;
 		};
@@ -6246,6 +6440,7 @@
 					"-DHAVE_READLINE=1",
 				);
 				PRODUCT_NAME = sqlite3;
+				"VALID_ARCHS[sdk=macosx*]" = x86_64;
 				ZERO_LINK = NO;
 			};
 			name = Release;

@@ -47,7 +47,7 @@ void sqlite3OpenTable(
 **  'd'            INTEGER
 **  'e'            REAL
 **
-** An extra 'b' is appended to the end of the string to cover the
+** An extra 'd' is appended to the end of the string to cover the
 ** rowid that appears as the last column in every index.
 **
 ** Memory for the buffer containing the column index affinity string
@@ -75,7 +75,7 @@ const char *sqlite3IndexAffinityStr(Vdbe *v, Index *pIdx){
     for(n=0; n<pIdx->nColumn; n++){
       pIdx->zColAff[n] = pTab->aCol[pIdx->aiColumn[n]].affinity;
     }
-    pIdx->zColAff[n++] = SQLITE_AFF_NONE;
+    pIdx->zColAff[n++] = SQLITE_AFF_INTEGER;
     pIdx->zColAff[n] = 0;
   }
  
@@ -239,6 +239,7 @@ void sqlite3AutoincrementBegin(Parse *pParse){
     memId = p->regCtr;
     assert( sqlite3SchemaMutexHeld(db, 0, pDb->pSchema) );
     sqlite3OpenTable(pParse, 0, p->iDb, pDb->pSchema->pSeqTab, OP_OpenRead);
+    sqlite3VdbeAddOp3(v, OP_Null, 0, memId, memId+1);
     addr = sqlite3VdbeCurrentAddr(v);
     sqlite3VdbeAddOp4(v, OP_String8, 0, memId-1, 0, p->pTab->zName, 0);
     sqlite3VdbeAddOp2(v, OP_Rewind, 0, addr+9);
@@ -1106,7 +1107,7 @@ insert_cleanup:
 **                                cause sqlite3_exec() to return immediately
 **                                with SQLITE_CONSTRAINT.
 **
-**  any              FAIL         Sqlite_exec() returns immediately with a
+**  any              FAIL         Sqlite3_exec() returns immediately with a
 **                                return code of SQLITE_CONSTRAINT.  The
 **                                transaction is not rolled back and any
 **                                prior changes are retained.
@@ -1156,9 +1157,11 @@ void sqlite3GenerateConstraintChecks(
   int regData;        /* Register containing first data column */
   int iCur;           /* Table cursor number */
   Index *pIdx;         /* Pointer to one of the indices */
+  sqlite3 *db;         /* Database connection */
   int seenReplace = 0; /* True if REPLACE is used to resolve INT PK conflict */
   int regOldRowid = (rowidChng && isUpdate) ? rowidChng : regRowid;
 
+  db = pParse->db;
   v = sqlite3GetVdbe(pParse);
   assert( v!=0 );
   assert( pTab->pSelect==0 );  /* This table is not a VIEW */
@@ -1191,7 +1194,7 @@ void sqlite3GenerateConstraintChecks(
         char *zMsg;
         sqlite3VdbeAddOp3(v, OP_HaltIfNull,
                                   SQLITE_CONSTRAINT, onError, regData+i);
-        zMsg = sqlite3MPrintf(pParse->db, "%s.%s may not be NULL",
+        zMsg = sqlite3MPrintf(db, "%s.%s may not be NULL",
                               pTab->zName, pTab->aCol[i].zName);
         sqlite3VdbeChangeP4(v, -1, zMsg, P4_DYNAMIC);
         break;
@@ -1213,18 +1216,28 @@ void sqlite3GenerateConstraintChecks(
   /* Test all CHECK constraints
   */
 #ifndef SQLITE_OMIT_CHECK
-  if( pTab->pCheck && (pParse->db->flags & SQLITE_IgnoreChecks)==0 ){
-    int allOk = sqlite3VdbeMakeLabel(v);
+  if( pTab->pCheck && (db->flags & SQLITE_IgnoreChecks)==0 ){
+    ExprList *pCheck = pTab->pCheck;
+    int i;
     pParse->ckBase = regData;
-    sqlite3ExprIfTrue(pParse, pTab->pCheck, allOk, SQLITE_JUMPIFNULL);
     onError = overrideError!=OE_Default ? overrideError : OE_Abort;
-    if( onError==OE_Ignore ){
-      sqlite3VdbeAddOp2(v, OP_Goto, 0, ignoreDest);
-    }else{
-      if( onError==OE_Replace ) onError = OE_Abort; /* IMP: R-15569-63625 */
-      sqlite3HaltConstraint(pParse, onError, 0, 0);
+    for(i=0; i<pCheck->nExpr; i++){
+      int allOk = sqlite3VdbeMakeLabel(v);
+      sqlite3ExprIfTrue(pParse, pCheck->a[i].pExpr, allOk, SQLITE_JUMPIFNULL);
+      if( onError==OE_Ignore ){
+        sqlite3VdbeAddOp2(v, OP_Goto, 0, ignoreDest);
+      }else{
+        char *zConsName = pCheck->a[i].zName;
+        if( onError==OE_Replace ) onError = OE_Abort; /* IMP: R-15569-63625 */
+        if( zConsName ){
+          zConsName = sqlite3MPrintf(db, "constraint %s failed", zConsName);
+        }else{
+          zConsName = 0;
+        }
+        sqlite3HaltConstraint(pParse, onError, zConsName, P4_DYNAMIC);
+      }
+      sqlite3VdbeResolveLabel(v, allOk);
     }
-    sqlite3VdbeResolveLabel(v, allOk);
   }
 #endif /* !defined(SQLITE_OMIT_CHECK) */
 
@@ -1280,7 +1293,7 @@ void sqlite3GenerateConstraintChecks(
         ** table.
         */
         Trigger *pTrigger = 0;
-        if( pParse->db->flags&SQLITE_RecTriggers ){
+        if( db->flags&SQLITE_RecTriggers ){
           pTrigger = sqlite3TriggersExist(pParse, pTab, TK_DELETE, 0, 0);
         }
         if( pTrigger || sqlite3FkRequired(pParse, pTab, 0, 0) ){
@@ -1369,7 +1382,7 @@ void sqlite3GenerateConstraintChecks(
         char *zErr;
 
         sqlite3StrAccumInit(&errMsg, 0, 0, 200);
-        errMsg.db = pParse->db;
+        errMsg.db = db;
         zSep = pIdx->nColumn>1 ? "columns " : "column ";
         for(j=0; j<pIdx->nColumn; j++){
           char *zCol = pTab->aCol[pIdx->aiColumn[j]].zName;
@@ -1393,7 +1406,7 @@ void sqlite3GenerateConstraintChecks(
         Trigger *pTrigger = 0;
         assert( onError==OE_Replace );
         sqlite3MultiWrite(pParse);
-        if( pParse->db->flags&SQLITE_RecTriggers ){
+        if( db->flags&SQLITE_RecTriggers ){
           pTrigger = sqlite3TriggersExist(pParse, pTab, TK_DELETE, 0, 0);
         }
         sqlite3GenerateRowDelete(
@@ -1578,31 +1591,25 @@ static int xferCompatibleIndex(Index *pDest, Index *pSrc){
 **
 **     INSERT INTO tab1 SELECT * FROM tab2;
 **
-** This optimization is only attempted if
+** The xfer optimization transfers raw records from tab2 over to tab1.  
+** Columns are not decoded and reassemblied, which greatly improves
+** performance.  Raw index records are transferred in the same way.
 **
-**    (1)  tab1 and tab2 have identical schemas including all the
-**         same indices and constraints
+** The xfer optimization is only attempted if tab1 and tab2 are compatible.
+** There are lots of rules for determining compatibility - see comments
+** embedded in the code for details.
 **
-**    (2)  tab1 and tab2 are different tables
+** This routine returns TRUE if the optimization is guaranteed to be used.
+** Sometimes the xfer optimization will only work if the destination table
+** is empty - a factor that can only be determined at run-time.  In that
+** case, this routine generates code for the xfer optimization but also
+** does a test to see if the destination table is empty and jumps over the
+** xfer optimization code if the test fails.  In that case, this routine
+** returns FALSE so that the caller will know to go ahead and generate
+** an unoptimized transfer.  This routine also returns FALSE if there
+** is no chance that the xfer optimization can be applied.
 **
-**    (3)  There must be no triggers on tab1
-**
-**    (4)  The result set of the SELECT statement is "*"
-**
-**    (5)  The SELECT statement has no WHERE, HAVING, ORDER BY, GROUP BY,
-**         or LIMIT clause.
-**
-**    (6)  The SELECT statement is a simple (not a compound) select that
-**         contains only tab2 in its FROM clause
-**
-** This method for implementing the INSERT transfers raw records from
-** tab2 over to tab1.  The columns are not decoded.  Raw records from
-** the indices of tab2 are transfered to tab1 as well.  In so doing,
-** the resulting tab1 has much less fragmentation.
-**
-** This routine returns TRUE if the optimization is attempted.  If any
-** of the conditions above fail so that the optimization should not
-** be attempted, then this routine returns FALSE.
+** This optimization is particularly useful at making VACUUM run faster.
 */
 static int xferOptimization(
   Parse *pParse,        /* Parser context */
@@ -1639,10 +1646,8 @@ static int xferOptimization(
   }
 #endif
   if( onError==OE_Default ){
-    onError = OE_Abort;
-  }
-  if( onError!=OE_Abort && onError!=OE_Rollback ){
-    return 0;   /* Cannot do OR REPLACE or OR IGNORE or OR FAIL */
+    if( pDest->iPKey>=0 ) onError = pDest->keyConf;
+    if( onError==OE_Default ) onError = OE_Abort;
   }
   assert(pSelect->pSrc);   /* allocated even if there is no FROM clause */
   if( pSelect->pSrc->nSrc!=1 ){
@@ -1731,7 +1736,7 @@ static int xferOptimization(
     }
   }
 #ifndef SQLITE_OMIT_CHECK
-  if( pDest->pCheck && sqlite3ExprCompare(pSrc->pCheck, pDest->pCheck) ){
+  if( pDest->pCheck && sqlite3ExprListCompare(pSrc->pCheck, pDest->pCheck) ){
     return 0;   /* Tables have different CHECK constraints.  Ticket #2252 */
   }
 #endif
@@ -1747,14 +1752,13 @@ static int xferOptimization(
     return 0;
   }
 #endif
+  if( (pParse->db->flags & SQLITE_CountRows)!=0 ){
+    return 0;  /* xfer opt does not play well with PRAGMA count_changes */
+  }
 
-  /* If we get this far, it means either:
-  **
-  **    *   We can always do the transfer if the table contains an
-  **        an integer primary key
-  **
-  **    *   We can conditionally do the transfer if the destination
-  **        table is empty.
+  /* If we get this far, it means that the xfer optimization is at
+  ** least a possibility, though it might only work if the destination
+  ** table (tab1) is initially empty.
   */
 #ifdef SQLITE_TEST
   sqlite3_xferopt_count++;
@@ -1766,16 +1770,23 @@ static int xferOptimization(
   iDest = pParse->nTab++;
   regAutoinc = autoIncBegin(pParse, iDbDest, pDest);
   sqlite3OpenTable(pParse, iDest, iDbDest, pDest, OP_OpenWrite);
-  if( (pDest->iPKey<0 && pDest->pIndex!=0) || destHasUniqueIdx ){
-    /* If tables do not have an INTEGER PRIMARY KEY and there
-    ** are indices to be copied and the destination is not empty,
-    ** we have to disallow the transfer optimization because the
-    ** the rowids might change which will mess up indexing.
+  if( (pDest->iPKey<0 && pDest->pIndex!=0)          /* (1) */
+   || destHasUniqueIdx                              /* (2) */
+   || (onError!=OE_Abort && onError!=OE_Rollback)   /* (3) */
+  ){
+    /* In some circumstances, we are able to run the xfer optimization
+    ** only if the destination table is initially empty.  This code makes
+    ** that determination.  Conditions under which the destination must
+    ** be empty:
     **
-    ** Or if the destination has a UNIQUE index and is not empty,
-    ** we also disallow the transfer optimization because we cannot
-    ** insure that all entries in the union of DEST and SRC will be
-    ** unique.
+    ** (1) There is no INTEGER PRIMARY KEY but there are indices.
+    **     (If the destination is not initially empty, the rowid fields
+    **     of index entries might need to change.)
+    **
+    ** (2) The destination has a unique index.  (The xfer optimization 
+    **     is unable to test uniqueness.)
+    **
+    ** (3) onError is something other than OE_Abort and OE_Rollback.
     */
     addr1 = sqlite3VdbeAddOp2(v, OP_Rewind, iDest, 0);
     emptyDestTest = sqlite3VdbeAddOp2(v, OP_Goto, 0, 0);

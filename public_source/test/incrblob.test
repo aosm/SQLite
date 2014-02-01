@@ -120,7 +120,7 @@ foreach AutoVacuumMode [list 0 1] {
   }
 
   db close
-  file delete -force test.db test.db-journal
+  forcedelete test.db test.db-journal
 
   sqlite3 db test.db
   execsql "PRAGMA auto_vacuum = $AutoVacuumMode"
@@ -379,7 +379,7 @@ ifcapable vtab {
 #
 ifcapable attach {
   do_test incrblob-5.1 {
-    file delete -force test2.db test2.db-journal
+    forcedelete test2.db test2.db-journal
     set ::size [expr [file size [info script]]]
     execsql {
       ATTACH 'test2.db' AS aux;
@@ -473,15 +473,9 @@ if {[permutation] != "memsubsys1"} {
     flush $::blob
   } {}
   
-  # At this point rollback should be illegal (because 
-  # there is an open blob channel).  But commit is also illegal because
-  # the open blob is read-write.
+  # At this point commit should be illegal (because 
+  # there is an open blob channel).
   #
-  do_test incrblob-6.10 {
-    catchsql {
-      ROLLBACK;
-    } db2
-  } {1 {cannot rollback transaction - SQL statements in progress}}
   do_test incrblob-6.11 {
     catchsql {
       COMMIT;
@@ -584,7 +578,7 @@ set ::data [read $fd 14000]
 close $fd
 
 db close
-file delete -force test.db test.db-journal
+forcedelete test.db test.db-journal
 sqlite3 db test.db
 
 do_test incrblob-7.2.1 {

@@ -20,6 +20,7 @@ source $testdir/tester.tcl
 set testprefix tkt-2d1a5c67d
 
 ifcapable {!wal || !vtab} {finish_test; return}
+if {![wal_is_ok]} {finish_test; return}
 
 for {set ii 1} {$ii<=10} {incr ii} {
   do_test tkt-2d1a5c67d.1.$ii {
@@ -118,8 +119,8 @@ do_test 3.5 {
 #
 forcedelete test.db2-wal test.db2
 do_test 3.6 {
-  file copy test.db-wal test.db2-wal
-  file copy test.db test.db2
+  copy_file test.db-wal test.db2-wal
+  copy_file test.db test.db2
   sqlite3 db2 test.db2
   execsql { SELECT * FROM t4 WHERE a = 'xyz' } db2
 } {xyz}

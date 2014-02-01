@@ -2,7 +2,7 @@
 #
 # Runs the full set of unit tests and generates qualification reports for sqlite prior to submission
 #
-# Usage: . qualify.sh [-dos] [-hfs] [-smb] [-afp] [-nfs] [-x86_64] [-i386] [-ppc] [-tmp]
+# Usage: . qualify.sh [-th3] [-dos] [-hfs] [-smb] [-afp] [-nfs] [-x86_64] [-i386] [-ppc] [-tmp]
 # 
 # qualify.sh should only be invoked from the root project folder (. scripts/qualify.sh)
 # 
@@ -33,9 +33,11 @@ TEST_PPC=${OPT_OFF}
 
 # test harness specifics
 HARNESS="testfixture"
-TESTNAME="veryquick"
+TESTNAME=""
 TESTNAME_QUICK="quick"
 TESTNAME_FULL="all"
+TARGET=testfixture
+BUILDCONFIG="Debug"
 
 # by default run all tests, if specific tests are requested then just run those
 TEST_ALL_FS=${OPT_ON}
@@ -63,31 +65,57 @@ for OPTARG in $@; do
     if [ "${OPTARG}" == "-noproxy" ] ; then OPT=1; PROXY_CONFIGS=${OPT_OFF}; fi
     if [ "${OPTARG}" == "-help" ] ; then OPT=1; SHOWHELP=${OPT_ON}; fi
     if [ "${OPTARG}" == "-stdout" ] ; then OPT=1; LOG_STDOUT=${OPT_ON}; fi
+    if [ "${OPTARG}" == "-th3" ] ; then OPT=1; HARNESS="TH3"; fi
     if [ ${OPT} == 0 ] ; then TESTNAME=${OPTARG}; fi
 done
+
+##
+## Adjust settings for TH3
+##
+if [ ${HARNESS} == "TH3" ]; then
+  if [ "${TESTNAME} " == " " -o "${TESTNAME} " == "${TESTNAME_FULL} " ]; then
+    TESTNAME="th3_fulltest"
+  fi
+  if [ "${TESTNAME} " == "${TESTNAME_QUICK} " ]; then
+    TESTNAME="th3_quicktest"
+  fi
+  TARGET=${TESTNAME}
+  BUILDCONFIG="Release"
+else
+  if [ "${TESTNAME} " == " " ]; then
+    TESTNAME="veryquick"
+  fi
+fi
 
 if [ ${SHOWHELP} == ${OPT_ON} ]; then
   TEST_ALL_FS=${OPT_OFF}; 
   TEST_ALL_ARCH=${OPT_OFF};
   DO_BUILD=${OPT_OFF};
+  CANCEL=${OPT_ON};
   echo "Usage: bash scripts/qualify.sh [options] [testname]"
   echo "  file system options:"
   echo "    -hfs -smb -afp -nfs -dos"
   echo "  arch options:"
   echo "    -x86_64 -i386 -ppc"
   echo "  other options:"
+  echo "    -th3             Qualify using the TH3 test harness instead of the TCL based testfixture"
   echo "    -tmp             Use /tmp/sqlite_q for tests and logs on local system"
   echo "    -full            Run the full ${HARNESS} suite ('veryquick' is default)"
   echo "    -quick           Run the quick ${HARNESS} suite ('veryquick' is default)"
   echo "    -nobuild         Don't rebuild the ${HARNESS} if it already exists"
-  echo "    -notest          Don't run any tests, just build the test fixture"
+  echo "    -notest          Don't run any tests, just build the test harness"
   echo "    -proxy           Run only the proxy variant on network file systems"
   echo "    -noproxy         Run only the non-proxy variant on network file systems"
+  echo "    -stdout          Log test output to STDOUT instead of creating log files"
 
 else
 
   if [ ${TEST_ALL_FS} == ${OPT_ON} ]; then
+    if [ ${HARNESS} == "TH3" ]; then
+      TEST_HFS=${OPT_ON};
+    else
       TEST_HFS=${OPT_ON}; TEST_AFP=${OPT_ON}; TEST_SMB=${OPT_ON}; TEST_NFS=${OPT_ON}; TEST_DOS=${OPT_ON}
+    fi
   fi
 
   if [ ${TEST_ALL_ARCH} == ${OPT_ON} ]; then
@@ -163,11 +191,11 @@ else
 
 fi
 
+ 
 ##
 ## Build the test harness
 ##
-TARGET=testfixture
-TESTEXECUTABLE="${BUILDDIR}/${TARGET}_sym/Debug/${TARGET}"
+TESTEXECUTABLE="${BUILDDIR}/${TARGET}_sym/${BUILDCONFIG}/${TARGET}"
 if [ -x ${TESTEXECUTABLE} ]; then
   DO_BUILD=${REBUILD}
 fi
@@ -186,7 +214,7 @@ if [ ${DO_BUILD} == ${OPT_ON} ]; then
   echo -n "Building ${TARGET} in ${BUILDDIR}..."
   mkdir -p ${BUILDDIR} 
   ( \
-    xcodebuild -target ${TARGET} -configuration Debug OBJROOT=${BUILDDIR}/${TARGET}_obj SYMROOT=${BUILDDIR}/${TARGET}_sym build > ${BUILDLOG} 2>&1; \
+    xcodebuild -target ${TARGET} -configuration ${BUILDCONFIG} OBJROOT=${BUILDDIR}/${TARGET}_obj SYMROOT=${BUILDDIR}/${TARGET}_sym build > ${BUILDLOG} 2>&1; \
   )
 
   if [ -x ${TESTEXECUTABLE} ]; then
@@ -201,18 +229,29 @@ if [ ${DO_BUILD} == ${OPT_ON} ]; then
 
 fi
 
-SQLITE_VERSION=""
-if [ -x ${TESTEXECUTABLE} ]; then 
-  VERSION_SCRIPT="${BUILDDIR}/v.test"
-  echo 'sqlite3 db :memory:; set v [db version]; db close; puts $v' > ${BUILDDIR}/v.test
-  SQLITE_VERSION=`${TESTEXECUTABLE} ${VERSION_SCRIPT}`
-  echo "${TARGET} based on sqlite version ${SQLITE_VERSION}"
+if [ ${HARNESS} == "TH3" ]; then 
+  SQLITE_VERSION=`cat public_source/VERSION`
+  echo "th3 based on sqlite version ${SQLITE_VERSION}"
   echo "--------------------------------------------------------------------------------"
+
+  TESTARGS=""
+  GREP_ERRORLINE1="errors out of"
+  GREP_ERRORLINE2=""
+else
+  SQLITE_VERSION=""
+  if [ -x ${TESTEXECUTABLE} ]; then 
+    VERSION_SCRIPT="${BUILDDIR}/v.test"
+    echo 'sqlite3 db :memory:; set v [db version]; db close; puts $v' > ${BUILDDIR}/v.test
+    SQLITE_VERSION=`${TESTEXECUTABLE} ${VERSION_SCRIPT}`
+    echo "${TARGET} based on sqlite version ${SQLITE_VERSION}"
+    echo "--------------------------------------------------------------------------------"
+  fi
+
+  TESTARGS="${SRCROOT}/public_source/test/${TESTNAME}.test"
+  GREP_ERRORLINE1="Failures on these tests:"
+  GREP_ERRORLINE2="0 errors out of"
 fi
 
-TESTARGS="${SRCROOT}/public_source/test/${TESTNAME}.test"
-GREP_ERRORLINE1="Failures on these tests:"
-GREP_ERRORLINE2="0 errors out of"
 
 ##
 ## HFS tests
@@ -512,7 +551,7 @@ if [  ${CANCEL} == ${OPT_OFF} -a ${TEST_DOS} == ${OPT_ON} ] ; then
     rm -rf ${TESTDIR}
     mkdir ${TESTDIR}
     
-    for PROXY in ${PROXY_CONFIGS} ; do
+    for PROXY in 0 ; do
       export SQLITE_FORCE_PROXY_LOCKING=$PROXY
       export PROXY_STATUS=""
       if [ $PROXY == ${OPT_ON} ] ; then 
@@ -566,7 +605,7 @@ if [ ${CANCEL} == ${OPT_OFF} ] ; then
     SUMMARYLOG="${QUALLOGDIR}/summary.txt"
   fi
   echo "Unit test qualification completed" > ${SUMMARYLOG}
-  echo "Testfixture based on sqlite version ${SQLITE_VERSION}" >> ${SUMMARYLOG}
+  echo "Test harness ${HARNESS} based on sqlite version ${SQLITE_VERSION}" >> ${SUMMARYLOG}
   echo "Qualification performed on system version ${OSVERSION}" >> ${SUMMARYLOG}
   echo "  Started   ${STARTTIME}" >> ${SUMMARYLOG}
   echo "  Completed ${ENDTIME}" >> ${SUMMARYLOG}
@@ -576,7 +615,11 @@ if [ ${CANCEL} == ${OPT_OFF} ] ; then
     ALLTESTLOGS=`(cd ${QUALLOGDIR}; ls test_*.log)`
     for TESTLOG in ${ALLTESTLOGS}; do
       LOGNAME=`echo ${TESTLOG} | sed 's/test_\(.*\)\.log/\1/'`
-      FAILURES=`grep 'Failures on these tests' ${QUALLOGDIR}/${TESTLOG} | sed 's/Failures on these tests://'`
+      if [ ${HARNESS} == "TH3" ]; then
+        FAILURES=`grep 'FAILED' ${QUALLOGDIR}/${TESTLOG}`
+      else
+        FAILURES=`grep 'Failures on these tests' ${QUALLOGDIR}/${TESTLOG} | sed 's/Failures on these tests://'`
+      fi
       ERRORS=`grep 'errors out of' ${QUALLOGDIR}/${TESTLOG}`
       echo "${LOGNAME}: ${ERRORS}" >> ${SUMMARYLOG}
       if [ "${FAILURES} " != " " ]; then 

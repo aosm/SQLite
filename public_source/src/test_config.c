@@ -37,6 +37,14 @@
 ** procedures use this to determine when tests should be omitted.
 */
 static void set_options(Tcl_Interp *interp){
+#ifdef HAVE_MALLOC_USABLE_SIZE
+  Tcl_SetVar2(interp, "sqlite_options", "malloc_usable_size", "1",
+              TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "malloc_usable_size", "0",
+              TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef SQLITE_32BIT_ROWID
   Tcl_SetVar2(interp, "sqlite_options", "rowid32", "1", TCL_GLOBAL_ONLY);
 #else
@@ -53,6 +61,12 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "debug", "1", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "debug", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_DIRECT_OVERFLOW_READ
+  Tcl_SetVar2(interp, "sqlite_options", "direct_read", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "direct_read", "0", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_DISABLE_DIRSYNC
@@ -363,6 +377,12 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "memorymanage", "0", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_OMIT_MERGE_SORT
+  Tcl_SetVar2(interp, "sqlite_options", "mergesort", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "mergesort", "1", TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef SQLITE_OMIT_OR_OPTIMIZATION
   Tcl_SetVar2(interp, "sqlite_options", "or_opt", "0", TCL_GLOBAL_ONLY);
 #else
@@ -412,10 +432,10 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "schema_version", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_ENABLE_STAT2
-  Tcl_SetVar2(interp, "sqlite_options", "stat2", "1", TCL_GLOBAL_ONLY);
+#ifdef SQLITE_ENABLE_STAT3
+  Tcl_SetVar2(interp, "sqlite_options", "stat3", "1", TCL_GLOBAL_ONLY);
 #else
-  Tcl_SetVar2(interp, "sqlite_options", "stat2", "0", TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp, "sqlite_options", "stat3", "0", TCL_GLOBAL_ONLY);
 #endif
 
 #if !defined(SQLITE_ENABLE_LOCKING_STYLE)
@@ -436,9 +456,9 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp,"sqlite_options","prefer_proxy_locking","0",TCL_GLOBAL_ONLY);
 #endif
 #if defined(SQLITE_ENABLE_PURGEABLE_PCACHE) && defined(__APPLE__)
-    Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","1",TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","1",TCL_GLOBAL_ONLY);
 #else
-    Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","0",TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","0",TCL_GLOBAL_ONLY);
 #endif
 #if SQLITE_DEFAULT_CKPTFULLFSYNC
   Tcl_SetVar2(interp,"sqlite_options","default_ckptfullfsync","1",TCL_GLOBAL_ONLY);
@@ -450,6 +470,11 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
               STRINGVALUE(SQLITE_DEFAULT_WAL_SAFETYLEVEL),TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp,"sqlite_options","default_wal_safetylevel","0",TCL_GLOBAL_ONLY);
+#endif
+#if SQLITE_ENABLE_PERSIST_WAL
+  Tcl_SetVar2(interp,"sqlite_options","enable_persist_wal","1",TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp,"sqlite_options","enable_persist_wal","0",TCL_GLOBAL_ONLY);
 #endif
     
 #ifdef SQLITE_OMIT_SHARED_CACHE
@@ -608,6 +633,7 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   LINKVAR( DEFAULT_PAGE_SIZE );
   LINKVAR( DEFAULT_FILE_FORMAT );
   LINKVAR( MAX_ATTACHED );
+  LINKVAR( MAX_DEFAULT_PAGE_SIZE );
 
   {
     static const int cv_TEMP_STORE = SQLITE_TEMP_STORE;

@@ -12,6 +12,7 @@
 
 #include <malloc/malloc.h>
 #include <dispatch/dispatch.h>
+#include <dispatch/private.h>
 #include <mach/vm_map.h>
 #include <mach/vm_statistics.h>
 #include <sys/errno.h>
@@ -108,6 +109,7 @@ struct PurgeablePCache {
    ** The global mutex must be held when accessing nMax.
    */
   int szPage;                         /* Size of allocated pages in bytes */
+  int szExtra;                        /* Size of extra space in bytes */
   int bPurgeable;                     /* True if cache is purgeable */
   unsigned int nMin;                  /* Minimum number of pages reserved */
   unsigned int nMax;                  /* Configured "cache_size" value */
@@ -146,6 +148,7 @@ struct PurgeablePCache {
  ** lives in the purgeable malloc zone and is pointed at by pPage.
  */
 struct PgHdr1 {
+  sqlite3_pcache_page page;
   unsigned int iKey;             /* Key value (page number) */
   PgHdr1 *pNext;                 /* Next in hash table chain */
   PurgeablePCache *pCache;               /* Cache that currently owns this page */
@@ -293,23 +296,25 @@ static void *purgeableCacheAlloc(int nByte){
 /*
  ** Free an allocated buffer obtained from purgeableCacheAlloc().
  */
-static void purgeableCacheFree(void *p){
+static int purgeableCacheFree(void *p){
+  int nFreed = 0;
   assert( sqlite3_mutex_held(purgeableCache.mutex) );
-  if( p==0 ) return;
+  if( p==0 ) return 0;
   if( p>=purgeableCache.pStart && p<purgeableCache.pEnd ){
     PgFreeslot *pSlot;
     sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_USED, -1);
     pSlot = (PgFreeslot*)p;
     pSlot->pNext = purgeableCache.pFree;
     purgeableCache.pFree = pSlot;
+
   }else{
-    int iSize;
     assert( sqlite3MemdebugHasType(p, MEMTYPE_PCACHE) );
     sqlite3MemdebugSetType(p, MEMTYPE_HEAP);
-    iSize = sqlite3MallocSize(p);
-    sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_OVERFLOW, -iSize);
+    nFreed = sqlite3MallocSize(p);
+    sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_OVERFLOW, -nFreed);
     sqlite3_free(p);
   }
+  return nFreed;
 }
 
 /* Returns the memory chunk at the specified index, allocating it if necessary 
@@ -443,6 +448,7 @@ static void *purgeableCacheGetChunk(PurgeablePCache *pCache, int iChunk){
   }
   return pCache->apChunks[iChunk];
 }
+
 #ifdef SQLITE_ENABLE_MEMORY_MANAGEMENT
 /*
 ** Return the size of a pache allocation
@@ -462,14 +468,79 @@ static int purgeableCacheMemSize(void *p){
 }
 #endif /* SQLITE_ENABLE_MEMORY_MANAGEMENT */
 
+/* Configures pPgHdr and returns a newly pinned page data memory slot or NULL 
+ * if none are available.  Chunks are examined in order and the first chunk
+ * that is not completely in-use (ie. the chunk has page data slots that are 
+ * unused - neither pinned nor unpinned) is scanned for an unused page data slot
+ * and that address is returned.
+ */
+static void *purgeableCacheGetChunkPageData(PurgeablePCache *pCache, PgHdr1 *pPgHdr){
+  void *pPageData = NULL;
+  int foundPageData = 0;
+  int iChunk;  
+
+  assert( sqlite3_mutex_held(purgeableCache.mutex) );
+  assert( pCache!=NULL );
+  assert( pPgHdr!=NULL );
+
+  /* search through chunks for unused page data */
+  for( iChunk = 0; !foundPageData; iChunk++ ){
+    void *pChunk = purgeableCacheGetChunk(pCache, iChunk);
+    if( pChunk==NULL ){
+      /* We failed to get a chunk, no available page data */
+      return NULL;
+    }
+    if( ((pCache->pChunkPinCount[iChunk] + pCache->pChunkUnpinCount[iChunk]) ==
+         0 )){
+      /* special case - if the chunk has zero pinned and zero unpinned pages
+       * it needs to be marked non-purgable before accessing it.  Failure
+       * means page allocation can't be completed. */
+      if( purgeableCacheRetainChunk(pCache, iChunk, PinAction_NewPin, NULL) ){
+        return NULL;
+      }
+      pPageData=pChunk; /* first page data slot is at the start of the chunk */
+      assert( *(PgHdr1 **)pPageData == NULL );
+      foundPageData = 1;
+    }else if( (pCache->pChunkPinCount[iChunk] + pCache->pChunkUnpinCount[iChunk]) <
+             pCache->nChunkPages ){
+      int i;
+      
+      /* Chunk has free page data slots, walk through the data chunk 
+       * to find an XPage that isn't pointing to a page header (ie. in use) */
+      for( i=0; i<pCache->nChunkPages; i++ ){
+        pPageData=(pChunk + (i * pCache->szXPage));
+
+        /* if the i'th slot starts points to NULL, the slot is unused */
+        if( *(PgHdr1 **)pPageData == NULL ){
+          if( purgeableCacheRetainChunk(pCache, iChunk, PinAction_NewPin, NULL) ){
+            return NULL;
+          }
+          foundPageData = 1;
+          break;
+        }
+      }
+    }
+    if( foundPageData ){
+      pPgHdr->pPageData = pPageData;
+      pPgHdr->iChunk = iChunk;
+      *(PgHdr1 **)pPageData = pPgHdr;
+      sqlite3StatusAdd(SQLITE_STATUS_MEMORY_USED, pCache->szPage);
+      sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_OVERFLOW, pCache->szPage);
+#if (TRACE_PURGEABLE_PCACHE > 2)
+      fprintf(stderr, "[PCACHE] .GETPDATA SQLITE_STATUS_MEMORY_USED+=%d\n", pCache->szXPage);
+#endif
+      return pPageData;
+    }
+  }
+  return NULL;
+}
+
 /*
  ** Allocate a new page object initially associated with cache pCache.  
  */
 static PgHdr1 *purgeableCacheAllocPage(PurgeablePCache *pCache){
   /* ACS: route allocations from our purgable chunks */
   int nByte = sizeof(PgHdr1);
-  int i, iChunk;  
-  void *pChunk = NULL;
   void *pPg = NULL;
   PgHdr1 *p = NULL;
   int bPurgeable = pCache->bPurgeable;
@@ -479,66 +550,28 @@ static PgHdr1 *purgeableCacheAllocPage(PurgeablePCache *pCache){
   if( !bPurgeable ){
     nByte += pCache->szPage;
   }
-  pPg = purgeableCacheAlloc(nByte);
+  pPg = purgeableCacheAlloc(nByte + pCache->szExtra);
   if( !pPg ){
     return NULL;
   }
   
   if( bPurgeable ){
     void *pPageData = NULL;
-    int foundPageData = 0;
+
 #ifdef SQLITE_TEST
     purgeableCache.nCurrentPage++;
 #endif
     p = (PgHdr1 *)pPg;    
     /* find the first available page data */
     p->pPageData = NULL;
-    /* search through chunks for unused page data */
-    for( iChunk = 0; !foundPageData; iChunk++ ){
-      pChunk = purgeableCacheGetChunk(pCache, iChunk);
-      if( pChunk==NULL ){
-        purgeableCacheFree(p);
-        return NULL;
-      }
-      if( ((pCache->pChunkPinCount[iChunk] + pCache->pChunkUnpinCount[iChunk]) ==
-           0 )){
-        /* special case - if the chunk has zero pinned and zero unpinned pages
-         it needs to be marked non-purgable before acessing it */
-        if( purgeableCacheRetainChunk(pCache, iChunk, PinAction_NewPin, NULL) ){
-          purgeableCacheFree(p);
-          return NULL;
-        }
-        pPageData=pChunk;
-        assert( *(PgHdr1 **)pPageData == NULL );
-        foundPageData = 1;
-      }else if( (pCache->pChunkPinCount[iChunk] + pCache->pChunkUnpinCount[iChunk]) <
-               pCache->nChunkPages ){
-        for( i=0; i<pCache->nChunkPages; i++ ){
-          pPageData=(pChunk + (i * pCache->szXPage));
-          if( *(PgHdr1 **)pPageData == NULL ){
-            if( purgeableCacheRetainChunk(pCache, iChunk, PinAction_NewPin, NULL) ){
-              purgeableCacheFree(p);
-              return NULL;
-            }
-            foundPageData = 1;
-            break;
-          }
-        }
-      }
-      if( foundPageData ){
-        p->pPageData = pPageData;
-        p->iChunk = iChunk;
-        *(PgHdr1 **)pPageData = p;
-        sqlite3StatusAdd(SQLITE_STATUS_MEMORY_USED, pCache->szPage);
-        sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_OVERFLOW, pCache->szPage);
-#if (TRACE_PURGEABLE_PCACHE > 1)
-        fprintf(stderr, "[PCACHE] .ALLOCPG  SQLITE_STATUS_MEMORY_USED+=%d\n", pCache->szXPage);
-#endif
-      }
-    }
-    if( !pChunk || !p->pPageData ){
+    pPageData = purgeableCacheGetChunkPageData(pCache, p);
+    if( !pPageData ){
+#if (TRACE_PURGEABLE_PCACHE > 0)
+      fprintf(stderr, "[PCACHE] .ALLOCPG  0x%x got NULL chunk page data\n", 
+              SQLITE_PTR_TO_INT(pCache));
+#endif      
       purgeableCacheFree(p);
-      p = NULL;
+      return NULL;
     }
 #if (TRACE_PURGEABLE_PCACHE > 0)
     fprintf(stderr, "[PCACHE] .ALLOCPG  0x%x iChunk=%d addr=0x%x\n", 
@@ -549,7 +582,16 @@ static PgHdr1 *purgeableCacheAllocPage(PurgeablePCache *pCache){
     p = NP_PAGE_TO_PGHDR1(pCache, pPg);
   }
   
-  return p;
+  if( pPg ){
+    if( bPurgeable ){
+      p->page.pBuf = PGHDR1_TO_PAGE(p);
+    } else {
+      p->page.pBuf = pPg;
+    }
+    p->page.pExtra = &p[1];
+    return p;
+  }
+  return 0;
 }
 
 /*
@@ -560,20 +602,19 @@ static PgHdr1 *purgeableCacheAllocPage(PurgeablePCache *pCache){
  ** with a NULL pointer, so we mark the NULL test with ALWAYS(). 
  */
 static void purgeableCacheFreePage(PgHdr1 *p){
-#if (TRACE_PURGEABLE_PCACHE > 0)
-  if (p) { fprintf(stderr, "[PCACHE] .FREEPG   0x%x iChunk=%d addr=0x%x\n", SQLITE_PTR_TO_INT(p->pCache), p->iChunk, SQLITE_PTR_TO_INT(p->pPageData)); 
-  } else { fprintf(stderr, "[PCACHE] .FREEPG   0x0 iChunk=-1 addr=0x0\n"); }
-#endif      
   if( ALWAYS(p) ){
     if( p->pCache->bPurgeable ){
+#if (TRACE_PURGEABLE_PCACHE > 0)
+      fprintf(stderr, "[PCACHE] .FREEPG   0x%x iChunk=%d addr=0x%x\n", SQLITE_PTR_TO_INT(p->pCache), p->iChunk, SQLITE_PTR_TO_INT(p->pPageData)); 
+#endif      
 #ifdef SQLITE_TEST
       purgeableCache.nCurrentPage--;
 #endif
       if( p->pPageData ){
-        *(void **)p->pPageData = NULL;
+        *(void **)p->pPageData = NULL; /* mark this page data slot as unused */
         sqlite3StatusAdd(SQLITE_STATUS_MEMORY_USED, -1*p->pCache->szPage);
         sqlite3StatusAdd(SQLITE_STATUS_PAGECACHE_OVERFLOW, -1*p->pCache->szPage);
-#if (TRACE_PURGEABLE_PCACHE > 1)
+#if (TRACE_PURGEABLE_PCACHE > 2)
         fprintf(stderr, "[PCACHE] .FREEPG   SQLITE_STATUS_MEMORY_USED-=%d\n", p->pCache->szXPage);
 #endif
       }
@@ -1101,13 +1142,17 @@ static void purgeableCacheShutdown(void *NotUsed){
  **
  ** Allocate a new cache.
  */
-static sqlite3_pcache *purgeableCacheCreate(int szPage, int bPurgeable){
+static sqlite3_pcache *purgeableCacheCreate(int szPage, int szExtra, int bPurgeable){
   PurgeablePCache *pCache;
+  
+  assert( (szPage & (szPage-1))==0 && szPage>=512 && szPage<=65536 );
+  assert( szExtra < 300 );
   
   pCache = (PurgeablePCache *)sqlite3_malloc(sizeof(PurgeablePCache));
   if( pCache ){
     memset(pCache, 0, sizeof(PurgeablePCache));
     pCache->szPage = szPage;
+    pCache->szExtra = szExtra;
     /* make sure the data pointer is 8-byte aligned */
     pCache->szXPage = ((SZ_PAGEDATA_PREFIX + szPage + 7) / 8) * 8;
     pCache->nChunkPages = (PURGEABLE_CHUNK_SIZE / pCache->szXPage);
@@ -1151,10 +1196,10 @@ static sqlite3_pcache *purgeableCacheCreate(int szPage, int bPurgeable){
 }
 
 /*
- ** Implementation of the sqlite3_pcache.xCachesize method. 
- **
- ** Configure the cache_size limit for a cache.
- */
+** Implementation of the sqlite3_pcache.xCachesize method. 
+**
+** Configure the cache_size limit for a cache.
+*/
 static void purgeableCacheCachesize(sqlite3_pcache *p, int nMax){
   PurgeablePCache *pCache = (PurgeablePCache *)p;
   if( pCache->bPurgeable ){
@@ -1175,6 +1220,20 @@ static void purgeableCacheCachesize(sqlite3_pcache *p, int nMax){
     purgeableCacheEnforceCacheMaxPage(pCache);
 
     purgeableCacheLeaveMutex();
+  }
+}
+
+/*
+** Implementation of the sqlite3_pcache.xShrink method. 
+**
+** Free up as much memory as possible.
+*/
+static void purgeableCacheShrink(sqlite3_pcache *p){
+  PurgeablePCache *pCache = (PurgeablePCache *)p;
+  if( pCache->bPurgeable ){
+    purgeableCacheEnterMutex();
+    purgeableCachePurgePendingChunks(pCache);
+    purgeableCacheLeaveMutex();    
   }
 }
 
@@ -1232,7 +1291,11 @@ static int purgeableCachePagecount(sqlite3_pcache *p){
  **
  **   5. Otherwise, allocate and return a new page buffer.
  */
-static void *purgeableCacheFetch(sqlite3_pcache *p, unsigned int iKey, int createFlag){
+static sqlite3_pcache_page *purgeableCacheFetch(
+  sqlite3_pcache *p, 
+  unsigned int iKey, 
+  int createFlag
+){
   unsigned int nPinned;
   PurgeablePCache *pCache = (PurgeablePCache *)p;
   PgHdr1 *pPage = 0;
@@ -1279,8 +1342,8 @@ static void *purgeableCacheFetch(sqlite3_pcache *p, unsigned int iKey, int creat
   }
   
   /* Step 3 of header comment. */
+  assert( pCache->nPage >= pCache->nRecyclable );
   nPinned = pCache->nPage - pCache->nRecyclable;
-  assert( nPinned>=0 );
   assert( pCache->n90pct == pCache->nMax*9/10 );
   if( createFlag==1 && (nPinned>=pCache->n90pct) ){
 #if (TRACE_PURGEABLE_PCACHE>2)
@@ -1342,6 +1405,7 @@ static void *purgeableCacheFetch(sqlite3_pcache *p, unsigned int iKey, int creat
     }else{
       *(void **)(NP_PGHDR1_TO_PAGE(pPage)) = 0;
     }
+    *(void **)pPage->page.pExtra = 0;
     pCache->apHash[h] = pPage;
   }
   
@@ -1354,11 +1418,8 @@ fetch_out:
   if( pagePurged && createFlag==0 ){
     return NULL;
   }
-  if( bPurgeable ){
-    return (pPage ? PGHDR1_TO_PAGE(pPage) : 0);
-  }else{
-    return (pPage ? NP_PGHDR1_TO_PAGE(pPage) : 0);
-  }
+
+  return &pPage->page;
 }
 
 
@@ -1367,17 +1428,16 @@ fetch_out:
  **
  ** Mark a page as unpinned (eligible for asynchronous recycling).
  */
-static void purgeableCacheUnpin(sqlite3_pcache *p, void *pPg, int reuseUnlikely){
+static void purgeableCacheUnpin(
+  sqlite3_pcache *p,
+  sqlite3_pcache_page *pPg,
+  int reuseUnlikely
+){
   PurgeablePCache *pCache = (PurgeablePCache *)p;
-  PgHdr1 *pPage = NULL;
+  PgHdr1 *pPage = (PgHdr1 *)pPg;
   int bPurgeable = pCache->bPurgeable;
 
   purgeableCacheEnterMutex();
-  if( bPurgeable ){
-    pPage = PAGE_TO_PGHDR1(pPg);
-  }else{
-    pPage = NP_PAGE_TO_PGHDR1(pCache, pPg);
-  }
   assert( pPage->pCache==pCache );
   
   /* It is an error to call this function if the page is already 
@@ -1427,21 +1487,16 @@ static void purgeableCacheUnpin(sqlite3_pcache *p, void *pPg, int reuseUnlikely)
  */
 static void purgeableCacheRekey(
   sqlite3_pcache *p,
-  void *pPg,
+  sqlite3_pcache_page *pPg,
   unsigned int iOld,
   unsigned int iNew
 ){
   PurgeablePCache *pCache = (PurgeablePCache *)p;
-  PgHdr1 *pPage = NULL;
+  PgHdr1 *pPage = (PgHdr1 *)pPg;
   PgHdr1 **pp;
   unsigned int h; 
   
   purgeableCacheEnterMutex();
-  if( pCache->bPurgeable ){
-    pPage = PAGE_TO_PGHDR1(pPg);
-  }else{
-    pPage = NP_PAGE_TO_PGHDR1(pCache, pPg);
-  }
   
   assert( pPage->iKey==iOld );
   assert( pPage->pCache==pCache );  
@@ -1561,8 +1616,9 @@ static void purgeableCacheDestroy(sqlite3_pcache *p){
  ** already provided an alternative.
  */
 void sqlite3PCacheSetDefault(void){
-  static sqlite3_pcache_methods defaultMethods = {
-    0,                       /* pArg */
+  static sqlite3_pcache_methods2 defaultMethods = {
+    1,                              /* iVersion */
+    0,                              /* pArg */
     purgeableCacheInit,             /* xInit */
     purgeableCacheShutdown,         /* xShutdown */
     purgeableCacheCreate,           /* xCreate */
@@ -1572,9 +1628,10 @@ void sqlite3PCacheSetDefault(void){
     purgeableCacheUnpin,            /* xUnpin */
     purgeableCacheRekey,            /* xRekey */
     purgeableCacheTruncate,         /* xTruncate */
-    purgeableCacheDestroy           /* xDestroy */
+    purgeableCacheDestroy,          /* xDestroy */
+    purgeableCacheShrink            /* xShrink */
   };
-  sqlite3_config(SQLITE_CONFIG_PCACHE, &defaultMethods);
+  sqlite3_config(SQLITE_CONFIG_PCACHE2, &defaultMethods);
 }
 
 #ifdef SQLITE_ENABLE_MEMORY_MANAGEMENT
@@ -1596,7 +1653,7 @@ int sqlite3PcacheReleaseMemory(int nReq){
       if (p->pCache->bPurgeable) {
         nFree += sqlite3MallocSize(p);
       } else {
-        nFree += sqlite3MallocSize(NP_PGHDR1_TO_PAGE(p));
+        nFree += sqlite3MallocSize(p->page.pBuf);
       }
       purgeableCachePinPage(p);
       purgeableCacheRemoveFromHash(p);
@@ -1620,8 +1677,8 @@ void sqlite3PcacheStats(
   int *pnRecyclable    /* OUT: Total number of pages available for recycling */
 ){
   *pnCurrent = purgeableCache.nCurrentPage;
-  *pnMax = purgeableCache.nMaxPage;
-  *pnMin = purgeableCache.nMinPage;
+  *pnMax = (int)purgeableCache.nMaxPage;
+  *pnMin = (int)purgeableCache.nMinPage;
   *pnRecyclable = purgeableCache.nRecyclable;
 }
 #endif
