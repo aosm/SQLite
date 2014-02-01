@@ -1,0 +1,4 @@
+Add SQLITE_OMIT_AUTORESET
+Review wal-checkpoint-fullfsync diffs
+Review diffs to pcache1 (re: purgeable_pcache)
+Logic around gethostuuid in os_unix.c is broken

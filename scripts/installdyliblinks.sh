@@ -15,4 +15,4 @@ mkdir -p $INSTALL_DIR
 rm -f "$LEGACY_DYLIB_PATH"
 ln -s "$EXECUTABLE_NAME" "$LEGACY_DYLIB_PATH"
 
-echo -n "Added dyld symlink to $LEGACY_DYLIB_PATH" 
+echo "Added dyld symlink to $LEGACY_DYLIB_PATH" 

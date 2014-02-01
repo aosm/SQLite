@@ -12,7 +12,7 @@
 # focus of this script is testing the ATTACH and DETACH commands
 # and related functionality.
 #
-# $Id: attach.test,v 1.49 2008/07/12 14:52:20 drh Exp $
+# $Id: attach.test,v 1.52 2009/05/29 14:39:08 drh Exp $
 #
 
 set testdir [file dirname $argv0]
@@ -757,8 +757,7 @@ ifcapable subquery {
       DETACH RAISE ( IGNORE ) IN ( SELECT "AAAAAA" . * ORDER BY 
       REGISTER LIMIT "AAAAAA" . "AAAAAA" OFFSET RAISE ( IGNORE ) NOT NULL )
     }
-  } {1 {invalid name: "RAISE ( IGNORE ) IN ( SELECT "AAAAAA" . * ORDER BY 
-      REGISTER LIMIT "AAAAAA" . "AAAAAA" OFFSET RAISE ( IGNORE ) NOT NULL )"}}
+  } {1 {no such table: AAAAAA}}
 }
 
 # Create a malformed file (a file that is not a valid database)
@@ -789,5 +788,52 @@ do_test attach-8.4 {
 db2 close
 file delete -force test2.db
 
+# Test that it is possible to attach the same database more than
+# once when not in shared-cache mode. That this is not possible in
+# shared-cache mode is tested in shared7.test.
+do_test attach-9.1 {
+  file delete -force test4.db
+  execsql {
+    ATTACH 'test4.db' AS aux1;
+    CREATE TABLE aux1.t1(a, b);
+    INSERT INTO aux1.t1 VALUES(1, 2);
+    ATTACH 'test4.db' AS aux2;
+    SELECT * FROM aux2.t1;
+  }
+} {1 2}
+do_test attach-9.2 {
+  catchsql {
+    BEGIN;
+      INSERT INTO aux1.t1 VALUES(3, 4);
+      INSERT INTO aux2.t1 VALUES(5, 6);
+  }
+} {1 {database is locked}}
+do_test attach-9.3 {
+  execsql {
+    COMMIT;
+    SELECT * FROM aux2.t1;
+  }
+} {1 2 3 4}
 
+# Ticket [abe728bbc311d81334dae9762f0db87c07a98f79].
+# Multi-database commit on an attached TEMP database.
+#
+do_test attach-10.1 {
+  execsql {
+    ATTACH '' AS noname;
+    ATTACH ':memory:' AS inmem;
+    BEGIN;
+    CREATE TABLE noname.noname(x);
+    CREATE TABLE inmem.inmem(y);
+    CREATE TABLE main.main(z);
+    COMMIT;
+    SELECT name FROM noname.sqlite_master;
+    SELECT name FROM inmem.sqlite_master;
+  }
+} {noname inmem}
+do_test attach-10.2 {
+  lrange [execsql {
+    PRAGMA database_list;
+  }] 9 end
+} {4 noname {} 5 inmem {}}
 finish_test

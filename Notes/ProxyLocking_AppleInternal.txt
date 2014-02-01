@@ -11,8 +11,6 @@ This is a temporary arrangement and we will not ship sqlite in that configuratio
 Known issus
 -----------
 
-<rdar://problem/6295206> Handle read-only parent directories, databases and file systems with proxy locking
-<rdar://problem/3803883> Support for breaking side locks
 <rdar://problem/6266442> Improve side-locking conch file semantics
 
 

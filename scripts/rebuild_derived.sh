@@ -1,4 +1,4 @@
-#
+#!/bin/bash
 # rebuild_derived.sh 
 #
 
@@ -9,18 +9,19 @@ BDIR=/tmp/rebuild_derived
 BLOG="${BDIR}/build.log"
 SDIR="`pwd`"
 DDIR=${SDIR}/derived_source
-DFILES="config.h keywordhash.h sqlite3.h parse.h parse.c opcodes.h opcodes.c sqlite3.c"
+TARGET_DFILES="config.h keywordhash.h sqlite3.h parse.h parse.c opcodes.h opcodes.c sqlite3.c"
+SYNC_DFILES="keywordhash.h sqlite3.h parse.h parse.c opcodes.h opcodes.c sqlite3.c"
 
 echo "Rebuilding derived files in ${BDIR} (build log in ${BLOG})"
 rm -rf ${BDIR}
 mkdir ${BDIR}
 ( cd ${BDIR}; python ${SDIR}/scripts/configure.py >& ${BLOG} )
-( cd ${BDIR}; make ${DFILES} >> ${BLOG} )
+( cd ${BDIR}; make ${TARGET_DFILES} >> ${BLOG} )
 
 CHANGEDFILES=""
 REPLACEDFILES=""
 
-for DFILE in ${DFILES}; do
+for DFILE in ${SYNC_DFILES}; do
   DFILEDIFF=`diff -N -q --ignore-matching-lines="This amalgamation was generated on" ${BDIR}/${DFILE} ${DDIR}/${DFILE}`
   if [ "${DFILEDIFF} " != " " ]; then
     CHANGEDFILES="${CHANGEDFILES} ${DFILE}"
@@ -37,7 +38,7 @@ else
     echo -n "Replace ${DFILE}? (y/n/d [n]) "
     read
     if [ "${REPLY} " == "d " ]; then
-      RAWDIFF=`echo "diff ${BDIR}/${DFILE} ${DDIR}/${DFILE}"; diff -N --ignore-matching-lines="This amalgamation was generated on" ${BDIR}/${DFILE} ${DDIR}/${DFILE}`
+      RAWDIFF=`echo "diff ${DDIR}/${DFILE} ${BDIR}/${DFILE}"; diff -N --ignore-matching-lines="This amalgamation was generated on" ${DDIR}/${DFILE} ${BDIR}/${DFILE}`
       echo "${RAWDIFF}" | less
       echo -n "Replace ${DFILE}? (y/n [n]) "
       read

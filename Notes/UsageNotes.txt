@@ -1,4 +1,28 @@
 
 # Miscellaneous notes about using sqlite
 
-- Please observe the restriction that virtual tables and shared cache cannot be used at the same time. (RTree uses on virtual tables)
+#
+# Compile time options
+#
+
+Enable request fullfsync notification:
+-DSQLITE_USE_REQUEST_FULLFSYNC=1
+
+Enable sqlite replay recording
+-DSQLITE_ENABLE_SQLRR=1
+set the environment variable SQLITE_REPLAY_RECORD_DIR to specify recording dir
+
+Enable network file system file locking extensions
+-DSQLITE_ENABLE_LOCKING_STYLE=1
+
+Enable auto profile
+-DSQLITE_ENABLE_AUTO_PROFILE=1
+
+Enable version 3.4.0 compatibility mode for substr
+-DSQLITE_SUBSTR_COMPATIBILITY=1
+
+Enable SQLite SPI
+-DSQLITE_ENABLE_APPLE_SPI=1
+
+Enable purgable cache
+-DSQLITE_ENABLE_PURGEABLE_PCACHE=1

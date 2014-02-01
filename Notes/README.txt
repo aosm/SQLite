@@ -4,32 +4,49 @@ SQLite is maintained by sqlite.org, this project workarea specifies the configur
 
 SQLite Project Resources
 ------------------------
-public_source/            - public sqlite sources from sqlite.org, may include internal-only customizations
+public_source/            - sqlite sources from sqlite.org, including internal customizations
 
-derived_source/           - files that are generated via configure & the generated Makefile
+derived_source/           - files that are generated via configure & the generated Makefile (see scripts/rebuild_derived.sh)
 
 Notes/
   README.txt              - this file
-  CustomizationNotes.txt  - overview of internal customizations to the public source
   EngineeringNotes.txt    - useful build/config details
   TestingNotes.txt        - known unit test failures
   ProxyLocking.txt        - describes how proxy locking works and how to use it
   
 scripts/
+  build_th3.sh            - script to create th3_fulltest executable against current system SDK
+  qualify_th3.sh          - bash script to run th3 tests against all supported architectures and file systems
   buildroot.sh            - script to create SQLite root (use -tcl to build an SQLite_tcl root, or -embedded to build a device root)
   configure.py            - script to invoke configure to produce a Makefile that will build sqlite in the same way the Xcode project does (used by qualify.sh).
   qualify.sh              - bash script to run unit tests against all supported architectures and file systems
   rebuild_derived.sh      - rebuilds and REPLACES the contents of the derived_sources directory
   installdyliblinks.sh    - install script used by the 'sqlite production dylib' target
   installtcldyliblinks.sh - install script used by the 'sqlite tcl module' target
-  
+
+TH3/
+  README_th3.txt          - information about where to get TH3 sources and how to access them
+  th3_public_source/      - TH3 public sources
+  th3_fulltest.th3script  - Xcode th3script file to construct fulltest
+  th3_quicktest.th3script - Xcode th3script file to construct quicktest
+  th3_onetest.th3script   - Xcode th3script file to construct onetest
+
 packaging/
   SQLite.plist            - Open source project version info
   SQLite.txt              - Open source project license info
-  dpkg                    - debian package information, not sure if this is used
+  dpkg                    - debian package information (not sure if this is used)
+
+VisualStudio/
+  SQLite.sln             - Visual studio solution file
+  SQLite/                - Visual studio project resources
+    SQLite.vcproj        - Visual C++ project file
+    includes/
+      autoversion.h      - Defines version numbers for SQLite3.DLL
+
 ./
   SQLite.xcodeproj        - Xcode project for building, installing & submitting
-  sqlite-3.x.y.tar.gz     - public sources used as basis for public_source
+  sqlite-3.x.y.tar.gz (or
+  SQLite-xxxxxxxxxx.zip)  - public sources used as basis for public_source
 
 
 Submission Requirements
@@ -41,6 +58,7 @@ Submission Requirements
 	SQLite.plist (openssl dgst -sha1 <public-source-tarball>)
     dpkg/control
 	CustomizationNotes.txt
+	VisualStudio/SQLite/includes/autoversion.h
 5. Build and post installable root to ~xdesign/roots/sqlite
 
 
@@ -57,7 +75,11 @@ Building Production Roots
 1. Change directories to the top level and run buildroot.sh (. scripts/buildroot.sh)
 2. Roots are installed into /tmp/Sqlite.roots/Sqlite~dst
 3. Root tar ball is created and appropriately named in /tmp as SQLite....
-
+WINDOWS
+1. See the instructions on setting up buildit here: http://tao.apple.com/cgi-bin/wiki?Buildit_For_Windows
+2. Quit visual studio and open a command window (shift-right click on the desktop)
+2. Enter the following command:
+	perl w:\bin/builditwin -altPath=VisualStudio -buildTool=Solution c:\cygwin\home\Adam\Work\SQLite\trunk -- "file = SQLite.sln"
 
 Building & using debug + os trace
 ---------------------------------
@@ -99,8 +121,26 @@ Testing on MS-DOS (done automatically via the qualify.sh script.)
 
 Testing on embedded platforms
 -----------------------------
+INSTRUCTIONS FOR TH3
+1. Prepare device for command line executable execution
+	nvram boot-args="debug=0x144 amfi_allow_any_signature=1 amfi_unrestrict_task_for_pid=1 cs_enforcement_disable=1"
+	sysctl -w security.mac.sandbox.debug_mode=1 (allows running from Xcode)
+2. Build th3_fulltest
+3. Sync over th3_fulltest binary if not synced via Xcode: rsync -av <Xcode build dir>/th3_fulltest rsync://root@localhost:10873/root/
+4. Connect to device and run in a test directory ... and wait about 6 hours
+
+INSTRUCTION FOR LEGACY TESTFIXTURE
 1. Grab the Tcl root from ~xdesign/roots/sqlite/
 2. Install the Tcl root in the SDKROOT and in / on the device
 3. Build the testfixture target for the SDK/device
 4. Copy over the testfixture and the public_source directory
 5. Run testfixture on the device: /tmp/testfixture /tmp/public_source/test/veryquick.test
+
+
+Testing on Windows platforms
+----------------------------
+1. Set up a cygwin environment according to the WebKit instructions found here: http://webkit.org/building/build.html
+2. Create an empty directory for building and testing
+3. From that directory, issue the following commands:
+  % .../scripts/configure.py -windows
+  % make test

@@ -15,8 +15,6 @@
 ** 
 ** The focus of this file is providing the TCL testing layer
 ** access to compile-time constants.
-**
-** $Id: test_config.c,v 1.48 2009/03/16 13:19:36 danielk1977 Exp $
 */
 
 #include "sqliteLimit.h"
@@ -129,6 +127,18 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "autoinc", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_OMIT_AUTOMATIC_INDEX
+  Tcl_SetVar2(interp, "sqlite_options", "autoindex", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "autoindex", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_AUTORESET
+  Tcl_SetVar2(interp, "sqlite_options", "autoreset", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "autoreset", "1", TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef SQLITE_OMIT_AUTOVACUUM
   Tcl_SetVar2(interp, "sqlite_options", "autovacuum", "0", TCL_GLOBAL_ONLY);
 #else
@@ -175,6 +185,20 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "columnmetadata", "1", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "columnmetadata", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_OVERSIZE_CELL_CHECK
+  Tcl_SetVar2(interp, "sqlite_options", "oversize_cell_check", "1",
+              TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "oversize_cell_check", "0",
+              TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_COMPILEOPTION_DIAGS
+  Tcl_SetVar2(interp, "sqlite_options", "compileoption_diags", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "compileoption_diags", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_COMPLETE
@@ -267,12 +291,6 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "gettable", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_OMIT_GLOBALRECOVER
-  Tcl_SetVar2(interp, "sqlite_options", "globalrecover", "0", TCL_GLOBAL_ONLY);
-#else
-  Tcl_SetVar2(interp, "sqlite_options", "globalrecover", "1", TCL_GLOBAL_ONLY);
-#endif
-
 #ifdef SQLITE_ENABLE_ICU
   Tcl_SetVar2(interp, "sqlite_options", "icu", "1", TCL_GLOBAL_ONLY);
 #else
@@ -349,12 +367,6 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "pager_pragmas", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_OMIT_PARSER
-  Tcl_SetVar2(interp, "sqlite_options", "parser", "0", TCL_GLOBAL_ONLY);
-#else
-  Tcl_SetVar2(interp, "sqlite_options", "parser", "1", TCL_GLOBAL_ONLY);
-#endif
-
 #if defined(SQLITE_OMIT_PRAGMA) || defined(SQLITE_OMIT_FLAG_PRAGMAS)
   Tcl_SetVar2(interp, "sqlite_options", "pragma", "0", TCL_GLOBAL_ONLY);
   Tcl_SetVar2(interp, "sqlite_options", "integrityck", "0", TCL_GLOBAL_ONLY);
@@ -390,6 +402,12 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "schema_version", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "schema_version", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_STAT2
+  Tcl_SetVar2(interp, "sqlite_options", "stat2", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "stat2", "0", TCL_GLOBAL_ONLY);
 #endif
 
 #if !defined(SQLITE_ENABLE_LOCKING_STYLE)
@@ -438,6 +456,12 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
       STRINGVALUE(SQLITE_THREADSAFE), TCL_GLOBAL_ONLY);
   assert( sqlite3_threadsafe()==SQLITE_THREADSAFE );
 
+#if defined(USETHREADASSERTS)
+  Tcl_SetVar2(interp,"sqlite_options","use_thread_asserts","1",TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp,"sqlite_options","use_thread_asserts","0",TCL_GLOBAL_ONLY);
+#endif
+  
 #ifdef SQLITE_OMIT_TEMPDB
   Tcl_SetVar2(interp, "sqlite_options", "tempdb", "0", TCL_GLOBAL_ONLY);
 #else
@@ -456,7 +480,7 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "trigger", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_OMIT_TRUCATE_OPTIMIZATION
+#ifdef SQLITE_OMIT_TRUNCATE_OPTIMIZATION
   Tcl_SetVar2(interp, "sqlite_options", "truncate_opt", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "truncate_opt", "1", TCL_GLOBAL_ONLY);
@@ -486,6 +510,12 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "vtab", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_OMIT_WAL
+  Tcl_SetVar2(interp, "sqlite_options", "wal", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "wal", "1", TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef SQLITE_OMIT_WSD
   Tcl_SetVar2(interp, "sqlite_options", "wsd", "0", TCL_GLOBAL_ONLY);
 #else
@@ -510,10 +540,32 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   Tcl_SetVar2(interp, "sqlite_options", "secure_delete", "0", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_MULTIPLEX_EXT_OVWR
+  Tcl_SetVar2(interp, "sqlite_options", "multiplex_ext_overwrite", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "multiplex_ext_overwrite", "0", TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef YYTRACKMAXSTACKDEPTH
   Tcl_SetVar2(interp, "sqlite_options", "yytrackmaxstackdepth", "1", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "yytrackmaxstackdepth", "0", TCL_GLOBAL_ONLY);
+#endif
+  
+#ifdef __APPLE__
+# if  defined(__ppc__)
+  Tcl_SetVar2(interp, "os_options", "arch", "ppc", TCL_GLOBAL_ONLY);
+# elif defined(__i386__)
+  Tcl_SetVar2(interp, "os_options", "arch", "i386", TCL_GLOBAL_ONLY);
+# elif defined(__x86_64__)
+  Tcl_SetVar2(interp, "os_options", "arch", "x86_64", TCL_GLOBAL_ONLY);
+# elif defined(__arm__)
+  Tcl_SetVar2(interp, "os_options", "arch", "arm", TCL_GLOBAL_ONLY);
+# else
+#  error Unrecognized architecture for exec_options
+# endif
+#else
+  Tcl_SetVar2(interp, "os_options", "arch", "unknown", TCL_GLOBAL_ONLY);
 #endif
 
 #define LINKVAR(x) { \
@@ -532,6 +584,7 @@ Tcl_SetVar2(interp, "sqlite_options", "long_double",
   LINKVAR( MAX_PAGE_SIZE );
   LINKVAR( MAX_PAGE_COUNT );
   LINKVAR( MAX_LIKE_PATTERN_LENGTH );
+  LINKVAR( MAX_TRIGGER_DEPTH );
   LINKVAR( DEFAULT_TEMP_CACHE_SIZE );
   LINKVAR( DEFAULT_CACHE_SIZE );
   LINKVAR( DEFAULT_PAGE_SIZE );

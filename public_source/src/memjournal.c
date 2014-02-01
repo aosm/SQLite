@@ -13,8 +13,6 @@
 ** This file contains code use to implement an in-memory rollback journal.
 ** The in-memory rollback journal is used to journal transactions for
 ** ":memory:" databases and when the journal_mode=MEMORY pragma is used.
-**
-** @(#) $Id: memjournal.c,v 1.8 2008/12/20 02:14:40 drh Exp $
 */
 #include "sqliteInt.h"
 
@@ -25,8 +23,13 @@ typedef struct FileChunk FileChunk;
 
 /* Space to hold the rollback journal is allocated in increments of
 ** this many bytes.
+**
+** The size chosen is a little less than a power of two.  That way,
+** the FileChunk object will have a size that almost exactly fills
+** a power-of-two allocation.  This mimimizes wasted space in power-of-two
+** memory allocators.
 */
-#define JOURNAL_CHUNKSIZE 1024
+#define JOURNAL_CHUNKSIZE ((int)(1024-sizeof(FileChunk*)))
 
 /* Macro to find the minimum of two numeric values.
 */
@@ -63,7 +66,8 @@ struct MemJournal {
 };
 
 /*
-** Read data from the file.
+** Read data from the in-memory journal file.  This is the implementation
+** of the sqlite3_vfs.xRead method.
 */
 static int memjrnlRead(
   sqlite3_file *pJfd,    /* The journal file from which to read */
@@ -77,12 +81,13 @@ static int memjrnlRead(
   int iChunkOffset;
   FileChunk *pChunk;
 
+  /* SQLite never tries to read past the end of a rollback journal file */
   assert( iOfst+iAmt<=p->endpoint.iOffset );
 
   if( p->readpoint.iOffset!=iOfst || iOfst==0 ){
     sqlite3_int64 iOff = 0;
     for(pChunk=p->pFirst; 
-        pChunk && (iOff+JOURNAL_CHUNKSIZE)<=iOfst;
+        ALWAYS(pChunk) && (iOff+JOURNAL_CHUNKSIZE)<=iOfst;
         pChunk=pChunk->pNext
     ){
       iOff += JOURNAL_CHUNKSIZE;
@@ -122,7 +127,7 @@ static int memjrnlWrite(
   /* An in-memory journal file should only ever be appended to. Random
   ** access writes are not required by sqlite.
   */
-  assert(iOfst==p->endpoint.iOffset);
+  assert( iOfst==p->endpoint.iOffset );
   UNUSED_PARAMETER(iOfst);
 
   while( nWrite>0 ){
@@ -185,6 +190,11 @@ static int memjrnlClose(sqlite3_file *pJfd){
 
 /*
 ** Sync the file.
+**
+** Syncing an in-memory journal is a no-op.  And, in fact, this routine
+** is never called in a working implementation.  This implementation
+** exists purely as a contingency, in case some malfunction in some other
+** part of SQLite causes Sync to be called by mistake.
 */
 static int memjrnlSync(sqlite3_file *NotUsed, int NotUsed2){
   UNUSED_PARAMETER2(NotUsed, NotUsed2);
@@ -203,7 +213,7 @@ static int memjrnlFileSize(sqlite3_file *pJfd, sqlite_int64 *pSize){
 /*
 ** Table of methods for MemJournal sqlite3_file object.
 */
-static struct sqlite3_io_methods MemJournalMethods = {
+static const struct sqlite3_io_methods MemJournalMethods = {
   1,                /* iVersion */
   memjrnlClose,     /* xClose */
   memjrnlRead,      /* xRead */
@@ -216,7 +226,11 @@ static struct sqlite3_io_methods MemJournalMethods = {
   0,                /* xCheckReservedLock */
   0,                /* xFileControl */
   0,                /* xSectorSize */
-  0                 /* xDeviceCharacteristics */
+  0,                /* xDeviceCharacteristics */
+  0,                /* xShmMap */
+  0,                /* xShmLock */
+  0,                /* xShmBarrier */
+  0                 /* xShmUnlock */
 };
 
 /* 
@@ -224,8 +238,9 @@ static struct sqlite3_io_methods MemJournalMethods = {
 */
 void sqlite3MemJournalOpen(sqlite3_file *pJfd){
   MemJournal *p = (MemJournal *)pJfd;
+  assert( EIGHT_BYTE_ALIGNMENT(p) );
   memset(p, 0, sqlite3MemJournalSize());
-  p->pMethod = &MemJournalMethods;
+  p->pMethod = (sqlite3_io_methods*)&MemJournalMethods;
 }
 
 /*
@@ -237,8 +252,7 @@ int sqlite3IsMemJournal(sqlite3_file *pJfd){
 }
 
 /* 
-** Return the number of bytes required to store a MemJournal that uses vfs
-** pVfs to create the underlying on-disk files.
+** Return the number of bytes required to store a MemJournal file descriptor.
 */
 int sqlite3MemJournalSize(void){
   return sizeof(MemJournal);

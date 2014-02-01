@@ -12,7 +12,7 @@
 #
 # This file implements tests for joins, including outer joins.
 #
-# $Id: join.test,v 1.26 2008/12/05 00:00:07 drh Exp $
+# $Id: join.test,v 1.27 2009/07/01 16:12:08 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -309,10 +309,8 @@ do_test join-3.4.2 {
   }
 } {1 {cannot join using column d - column not present in both tables}}
 do_test join-3.5 {
-  catchsql {
-    SELECT * FROM t1 USING(a);
-  }
-} {0 {1 2 3 2 3 4 3 4 5}}
+  catchsql { SELECT * FROM t1 USING(a) }
+} {1 {a JOIN clause is required before USING}}
 do_test join-3.6 {
   catchsql {
     SELECT * FROM t1 JOIN t2 ON t3.a=t2.b;
@@ -577,5 +575,70 @@ ifcapable subquery {
   } {1 2 3 {} {} {}}
 
 } ;# ifcapable subquery
+
+#-------------------------------------------------------------------------
+# The following tests are to ensure that bug b73fb0bd64 is fixed.
+#
+do_test join-11.1 {
+  drop_all_tables
+  execsql {
+    CREATE TABLE t1(a INTEGER PRIMARY KEY, b TEXT);
+    CREATE TABLE t2(a INTEGER PRIMARY KEY, b TEXT);
+    INSERT INTO t1 VALUES(1,'abc');
+    INSERT INTO t1 VALUES(2,'def');
+    INSERT INTO t2 VALUES(1,'abc');
+    INSERT INTO t2 VALUES(2,'def');
+    SELECT * FROM t1 NATURAL JOIN t2;
+  }
+} {1 abc 2 def}
+
+do_test join-11.2 {
+  execsql { SELECT a FROM t1 JOIN t1 USING (a)}
+} {1 2}
+do_test join-11.3 {
+  execsql { SELECT a FROM t1 JOIN t1 AS t2 USING (a)}
+} {1 2}
+do_test join-11.3 {
+  execsql { SELECT * FROM t1 NATURAL JOIN t1 AS t2}
+} {1 abc 2 def}
+do_test join-11.4 {
+  execsql { SELECT * FROM t1 NATURAL JOIN t1 }
+} {1 abc 2 def}
+
+do_test join-11.5 {
+  drop_all_tables
+  execsql {
+    CREATE TABLE t1(a COLLATE nocase, b);
+    CREATE TABLE t2(a, b);
+    INSERT INTO t1 VALUES('ONE', 1);
+    INSERT INTO t1 VALUES('two', 2);
+    INSERT INTO t2 VALUES('one', 1);
+    INSERT INTO t2 VALUES('two', 2);
+  }
+} {}
+do_test join-11.6 {
+  execsql { SELECT * FROM t1 NATURAL JOIN t2 }
+} {ONE 1 two 2}
+do_test join-11.7 {
+  execsql { SELECT * FROM t2 NATURAL JOIN t1 }
+} {two 2}
+
+do_test join-11.8 {
+  drop_all_tables
+  execsql {
+    CREATE TABLE t1(a, b TEXT);
+    CREATE TABLE t2(b INTEGER, a);
+    INSERT INTO t1 VALUES('one', '1.0');
+    INSERT INTO t1 VALUES('two', '2');
+    INSERT INTO t2 VALUES(1, 'one');
+    INSERT INTO t2 VALUES(2, 'two');
+  }
+} {}
+do_test join-11.9 {
+  execsql { SELECT * FROM t1 NATURAL JOIN t2 }
+} {one 1.0 two 2}
+do_test join-11.10 {
+  execsql { SELECT * FROM t2 NATURAL JOIN t1 }
+} {1 one 2 two}
 
 finish_test

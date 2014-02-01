@@ -22,9 +22,9 @@
 # The amalgamated SQLite code will be written into sqlite3.c
 #
 
-# Begin by reading the "sqlite3.h" header file.  Count the number of lines
-# in this file and extract the version number.  That information will be
-# needed in order to generate the header of the amalgamation.
+# Begin by reading the "sqlite3.h" header file.  Extract the version number
+# from in this file.  The versioon number is needed to generate the header
+# comment of the amalgamation.
 #
 if {[lsearch $argv --nostatic]>=0} {
   set addstatic 0
@@ -54,20 +54,18 @@ puts $out [subst \
 ** single large file, the entire code can be compiled as a one translation
 ** unit.  This allows many compilers to do optimizations that would not be
 ** possible if the files were compiled separately.  Performance improvements
-** of 5% are more are commonly seen when SQLite is compiled as a single
+** of 5% or more are commonly seen when SQLite is compiled as a single
 ** translation unit.
 **
 ** This file is all you need to compile SQLite.  To use SQLite in other
 ** programs, you need this file and the "sqlite3.h" header file that defines
 ** the programming interface to the SQLite library.  (If you do not have 
-** the "sqlite3.h" header file at hand, you will find a copy in the first
-** $cnt lines past this header comment.)  Additional code files may be
-** needed if you want a wrapper to interface SQLite with your choice of
-** programming language.  The code for the "sqlite3" command-line shell
-** is also in a separate file.  This file contains only code for the core
-** SQLite library.
-**
-** This amalgamation was generated on $today.
+** the "sqlite3.h" header file at hand, you will find a copy embedded within
+** the text of this file.  Search for "Begin file sqlite3.h" to find the start
+** of the embedded sqlite3.h header file.) Additional code files may be needed
+** if you want a wrapper to interface SQLite with your choice of programming
+** language. The code for the "sqlite3" command-line shell is also in a
+** separate file. This file contains only code for the core SQLite library.
 */
 #define SQLITE_CORE 1
 #define SQLITE_AMALGAMATION 1}]
@@ -89,7 +87,7 @@ foreach hdr {
    btree.h
    btreeInt.h
    fts3.h
-   fts3_expr.h
+   fts3Int.h
    fts3_hash.h
    fts3_tokenizer.h
    hash.h
@@ -109,8 +107,10 @@ foreach hdr {
    sqliteicu.h
    sqliteInt.h
    sqliteLimit.h
+   sqlrr.h
    vdbe.h
    vdbeInt.h
+   wal.h
 } {
   set available_hdr($hdr) 1
 }
@@ -166,6 +166,7 @@ proc copy_file {filename} {
     } elseif {[regexp {^#line} $line]} {
       # Skip #line directives.
     } elseif {$addstatic && ![regexp {^(static|typedef)} $line]} {
+      regsub {^SQLITE_API } $line {} line
       if {[regexp $declpattern $line all funcname]} {
         # Add the SQLITE_PRIVATE or SQLITE_API keyword before functions.
         # so that linkage can be modified at compile-time.
@@ -212,6 +213,7 @@ foreach file {
    sqliteInt.h
 
    global.c
+   ctime.c
    status.c
    date.c
    os.c
@@ -245,6 +247,7 @@ foreach file {
    pcache_purgeable.c
    rowset.c
    pager.c
+   wal.c
 
    btmutex.c
    btree.c
@@ -253,6 +256,7 @@ foreach file {
    vdbemem.c
    vdbeaux.c
    vdbeapi.c
+   vdbetrace.c
    vdbe.c
    vdbeblob.c
    journal.c
@@ -269,6 +273,7 @@ foreach file {
    callback.c
    delete.c
    func.c
+   fkey.c
    insert.c
    legacy.c
    loadext.c
@@ -296,10 +301,13 @@ foreach file {
    fts3_porter.c
    fts3_tokenizer.c
    fts3_tokenizer1.c
+   fts3_write.c
+   fts3_snippet.c
 
    rtree.c
    icu.c
    fts3_icu.c
+   sqlrr.c
 } {
   copy_file tsrc/$file
 }

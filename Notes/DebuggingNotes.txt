@@ -1,0 +1,8 @@
+
+TH3
+
+Add --trace 1 to enable file system and statement logging
+Add --breakpoint to trigger a call to test_breakpoint()
+
+See other script terms in mkth3.tcl
+

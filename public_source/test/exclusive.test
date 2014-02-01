@@ -12,7 +12,7 @@
 # of these tests is exclusive access mode (i.e. the thing activated by 
 # "PRAGMA locking_mode = EXCLUSIVE").
 #
-# $Id: exclusive.test,v 1.11 2008/12/22 11:43:36 danielk1977 Exp $
+# $Id: exclusive.test,v 1.15 2009/06/26 12:30:40 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -212,7 +212,7 @@ do_test exclusive-2.8 {
     ROLLBACK;
   } db2
 } {}
-sqlite3_soft_heap_limit $soft_limit
+sqlite3_soft_heap_limit $cmdlinearg(soft-heap-limit)
 
 do_test exclusive-2.9 {
   # Write the database to establish the exclusive lock with connection 'db.
@@ -253,17 +253,22 @@ db2 close
 # from being inspected externally.
 #
 if {$tcl_platform(platform) != "windows"} {
+
+  # Return a list of two booleans (either 0 or 1). The first is true
+  # if the named file exists. The second is true only if the file
+  # exists and the first 28 bytes contain at least one non-zero byte.
+  #
   proc filestate {fname} {
     set exists 0
     set content 0
     if {[file exists $fname]} {
       set exists 1
       set hdr [hexio_read $fname 0 28]
-      set content \
-       [expr {$hdr!="00000000000000000000000000000000000000000000000000000000"}]
+      set content [expr {0==[string match $hdr [string repeat 0 56]]}]
     }
     list $exists $content
   }
+
   do_test exclusive-3.0 {
     filestate test.db-journal
   } {0 0}
@@ -391,17 +396,13 @@ do_test exclusive-4.5 {
 # longer active.
 #
 db close
-sqlite db test.db
+sqlite3 db test.db
 
 # if we're using proxy locks, we use 3 filedescriptors for a db
 # that is open but NOT writing changes, normally
 # sqlite uses 1 (proxy locking adds the conch and the local lock)
-set using_proxy 0
-foreach {name value} [array get env SQLITE_FORCE_PROXY_LOCKING] {
-  set using_proxy $value
-}
 set extrafds 0
-if {$using_proxy!=0} {
+if {[forced_proxy_locking]} {
   set extrafds 2
 } 
 
@@ -417,7 +418,7 @@ do_test exclusive-5.1 {
   # Three files are open: The db, journal and statement-journal.
   set sqlite_open_file_count
   expr $sqlite_open_file_count-$extrafds
-} {3}
+} [expr 3 - ($TEMP_STORE>=2)]
 do_test exclusive-5.2 {
   execsql {
     COMMIT;
@@ -443,7 +444,7 @@ do_test exclusive-5.4 {
   # Three files are open: The db, journal and statement-journal.
   set sqlite_open_file_count
   expr $sqlite_open_file_count-$extrafds
-} {3}
+} [expr 3 - ($TEMP_STORE>=2)]
 do_test exclusive-5.5 {
   execsql {
     COMMIT;
@@ -451,7 +452,7 @@ do_test exclusive-5.5 {
   # Three files are still open: The db, journal and statement-journal.
   set sqlite_open_file_count
   expr $sqlite_open_file_count-$extrafds
-} {3}
+} [expr 3 - ($TEMP_STORE>=2)]
 do_test exclusive-5.6 {
   execsql {
     PRAGMA locking_mode = normal;
@@ -464,4 +465,41 @@ do_test exclusive-5.7 {
   expr $sqlite_open_file_count-$extrafds
 } {1}
 
+#-------------------------------------------------------------------------
+
+do_execsql_test exclusive-6.1 {
+  CREATE TABLE t4(a, b);
+  INSERT INTO t4 VALUES('Eden', 1955);
+  BEGIN;
+    INSERT INTO t4 VALUES('Macmillan', 1957);
+    INSERT INTO t4 VALUES('Douglas-Home', 1963);
+    INSERT INTO t4 VALUES('Wilson', 1964);
+}
+do_test exclusive-6.2 {
+  forcedelete test2.db test2.db-journal
+  file copy test.db test2.db
+  file copy test.db-journal test2.db-journal
+  sqlite3 db test2.db
+} {}
+
+do_execsql_test exclusive-6.3 {
+  PRAGMA locking_mode = EXCLUSIVE;
+  SELECT * FROM t4;
+} {exclusive Eden 1955}
+
+do_test exclusive-6.4 {
+  db close
+  forcedelete test.db test.db-journal
+  set fd [open test.db-journal w]
+  puts $fd x
+  close $fd
+  sqlite3 db test.db
+} {}
+
+do_execsql_test exclusive-6.5 {
+  PRAGMA locking_mode = EXCLUSIVE;
+  SELECT * FROM sqlite_master;
+} {exclusive}
+
 finish_test
+

@@ -14,8 +14,6 @@
 ** an existing VFS. The code in this file attempts to verify that SQLite
 ** correctly populates and syncs a journal file before writing to a
 ** corresponding database file.
-**
-** $Id: test_journal.c,v 1.14 2009/03/28 17:21:52 danielk1977 Exp $
 */
 #if SQLITE_TEST          /* This file is used for testing only */
 
@@ -163,9 +161,10 @@ static void jtDlClose(sqlite3_vfs*, void*);
 static int jtRandomness(sqlite3_vfs*, int nByte, char *zOut);
 static int jtSleep(sqlite3_vfs*, int microseconds);
 static int jtCurrentTime(sqlite3_vfs*, double*);
+static int jtCurrentTimeInt64(sqlite3_vfs*, sqlite3_int64*);
 
 static sqlite3_vfs jt_vfs = {
-  1,                             /* iVersion */
+  2,                             /* iVersion */
   sizeof(jt_file),               /* szOsFile */
   JT_MAX_PATHNAME,               /* mxPathname */
   0,                             /* pNext */
@@ -181,7 +180,9 @@ static sqlite3_vfs jt_vfs = {
   jtDlClose,                     /* xDlClose */
   jtRandomness,                  /* xRandomness */
   jtSleep,                       /* xSleep */
-  jtCurrentTime                  /* xCurrentTime */
+  jtCurrentTime,                 /* xCurrentTime */
+  0,                             /* xGetLastError */
+  jtCurrentTimeInt64             /* xCurrentTimeInt64 */
 };
 
 static sqlite3_io_methods jt_io_methods = {
@@ -218,12 +219,16 @@ static void leaveJtMutex(void){
 }
 
 extern int sqlite3_io_error_pending;
-static void stop_ioerr_simulation(int *piSave){
+extern int sqlite3_io_error_hit;
+static void stop_ioerr_simulation(int *piSave, int *piSave2){
   *piSave = sqlite3_io_error_pending;
+  *piSave2 = sqlite3_io_error_hit;
   sqlite3_io_error_pending = -1;
+  sqlite3_io_error_hit = 0;
 }
-static void start_ioerr_simulation(int iSave){
+static void start_ioerr_simulation(int iSave, int iSave2){
   sqlite3_io_error_pending = iSave;
+  sqlite3_io_error_hit = iSave2;
 }
 
 /*
@@ -356,6 +361,7 @@ static int openTransaction(jt_file *pMain, jt_file *pJournal){
   sqlite3_file *p = pMain->pReal;
   int rc = SQLITE_OK;
 
+  closeTransaction(pMain);
   aData = sqlite3_malloc(pMain->nPagesize);
   pMain->pWritable = sqlite3BitvecCreate(pMain->nPage);
   pMain->aCksum = sqlite3_malloc(sizeof(u32) * (pMain->nPage + 1));
@@ -366,13 +372,23 @@ static int openTransaction(jt_file *pMain, jt_file *pJournal){
   }else if( pMain->nPage>0 ){
     u32 iTrunk;
     int iSave;
+    int iSave2;
 
-    stop_ioerr_simulation(&iSave);
+    stop_ioerr_simulation(&iSave, &iSave2);
 
     /* Read the database free-list. Add the page-number for each free-list
     ** leaf to the jt_file.pWritable bitvec.
     */
     rc = sqlite3OsRead(p, aData, pMain->nPagesize, 0);
+    if( rc==SQLITE_OK ){
+      u32 nDbsize = decodeUint32(&aData[28]);
+      if( nDbsize>0 && memcmp(&aData[24], &aData[92], 4)==0 ){
+        u32 iPg;
+        for(iPg=nDbsize+1; iPg<=pMain->nPage; iPg++){
+          sqlite3BitvecSet(pMain->pWritable, iPg);
+        }
+      }
+    }
     iTrunk = decodeUint32(&aData[32]);
     while( rc==SQLITE_OK && iTrunk>0 ){
       u32 nLeaf;
@@ -398,86 +414,11 @@ static int openTransaction(jt_file *pMain, jt_file *pJournal){
       }
     }
 
-    start_ioerr_simulation(iSave);
+    start_ioerr_simulation(iSave, iSave2);
   }
 
   sqlite3_free(aData);
   return rc;
-}
-
-/*
-** Write data to an jt-file.
-*/
-static int jtWrite(
-  sqlite3_file *pFile, 
-  const void *zBuf, 
-  int iAmt, 
-  sqlite_int64 iOfst
-){
-  jt_file *p = (jt_file *)pFile;
-  if( p->flags&SQLITE_OPEN_MAIN_JOURNAL ){
-    if( iOfst==0 ){
-      jt_file *pMain = locateDatabaseHandle(p->zName);
-      assert( pMain );
-  
-      if( decodeJournalHdr(zBuf, 0, &pMain->nPage, 0, &pMain->nPagesize) ){
-        /* Zeroing the first journal-file header. This is the end of a
-        ** transaction. */
-        closeTransaction(pMain);
-      }else{
-        /* Writing the first journal header to a journal file. This happens
-        ** when a transaction is first started.  */
-        int rc;
-        if( SQLITE_OK!=(rc=openTransaction(pMain, p)) ){
-          return rc;
-        }
-      }
-    }
-    if( p->iMaxOff<(iOfst + iAmt) ){
-      p->iMaxOff = iOfst + iAmt;
-    }
-  }
-
-  if( p->flags&SQLITE_OPEN_MAIN_DB && p->pWritable ){
-    if( iAmt<p->nPagesize 
-     && p->nPagesize%iAmt==0 
-     && iOfst>=(PENDING_BYTE+512) 
-     && iOfst+iAmt<=PENDING_BYTE+p->nPagesize
-    ){
-      /* No-op. This special case is hit when the backup code is copying a
-      ** to a database with a larger page-size than the source database and
-      ** it needs to fill in the non-locking-region part of the original
-      ** pending-byte page.
-      */
-    }else{
-      u32 pgno = iOfst/p->nPagesize + 1;
-      assert( (iAmt==1||iAmt==p->nPagesize) && ((iOfst+iAmt)%p->nPagesize)==0 );
-      assert( pgno<=p->nPage || p->nSync>0 );
-      assert( pgno>p->nPage || sqlite3BitvecTest(p->pWritable, pgno) );
-    }
-  }
-
-  return sqlite3OsWrite(p->pReal, zBuf, iAmt, iOfst);
-}
-
-/*
-** Truncate an jt-file.
-*/
-static int jtTruncate(sqlite3_file *pFile, sqlite_int64 size){
-  jt_file *p = (jt_file *)pFile;
-  if( p->flags&SQLITE_OPEN_MAIN_JOURNAL && size==0 ){
-    /* Truncating a journal file. This is the end of a transaction. */
-    jt_file *pMain = locateDatabaseHandle(p->zName);
-    closeTransaction(pMain);
-  }
-  if( p->flags&SQLITE_OPEN_MAIN_DB && p->pWritable ){
-    u32 pgno;
-    u32 locking_page = (u32)(PENDING_BYTE/p->nPagesize+1);
-    for(pgno=size/p->nPagesize+1; pgno<=p->nPage; pgno++){
-      assert( pgno==locking_page || sqlite3BitvecTest(p->pWritable, pgno) );
-    }
-  }
-  return sqlite3OsTruncate(p->pReal, size);
 }
 
 /*
@@ -493,13 +434,14 @@ static int readJournalFile(jt_file *p, jt_file *pMain){
   sqlite3_int64 iSize = p->iMaxOff;
   unsigned char *aPage;
   int iSave;
+  int iSave2;
 
   aPage = sqlite3_malloc(pMain->nPagesize);
   if( !aPage ){
     return SQLITE_IOERR_NOMEM;
   }
 
-  stop_ioerr_simulation(&iSave);
+  stop_ioerr_simulation(&iSave, &iSave2);
 
   while( rc==SQLITE_OK && iOff<iSize ){
     u32 nRec, nPage, nSector, nPagesize;
@@ -552,12 +494,96 @@ static int readJournalFile(jt_file *p, jt_file *pMain){
   }
 
 finish_rjf:
-  start_ioerr_simulation(iSave);
+  start_ioerr_simulation(iSave, iSave2);
   sqlite3_free(aPage);
   if( rc==SQLITE_IOERR_SHORT_READ ){
     rc = SQLITE_OK;
   }
   return rc;
+}
+
+/*
+** Write data to an jt-file.
+*/
+static int jtWrite(
+  sqlite3_file *pFile, 
+  const void *zBuf, 
+  int iAmt, 
+  sqlite_int64 iOfst
+){
+  int rc;
+  jt_file *p = (jt_file *)pFile;
+  if( p->flags&SQLITE_OPEN_MAIN_JOURNAL ){
+    if( iOfst==0 ){
+      jt_file *pMain = locateDatabaseHandle(p->zName);
+      assert( pMain );
+  
+      if( iAmt==28 ){
+        /* Zeroing the first journal-file header. This is the end of a
+        ** transaction. */
+        closeTransaction(pMain);
+      }else if( iAmt!=12 ){
+        /* Writing the first journal header to a journal file. This happens
+        ** when a transaction is first started.  */
+        u8 *z = (u8 *)zBuf;
+        pMain->nPage = decodeUint32(&z[16]);
+        pMain->nPagesize = decodeUint32(&z[24]);
+        if( SQLITE_OK!=(rc=openTransaction(pMain, p)) ){
+          return rc;
+        }
+      }
+    }
+    if( p->iMaxOff<(iOfst + iAmt) ){
+      p->iMaxOff = iOfst + iAmt;
+    }
+  }
+
+  if( p->flags&SQLITE_OPEN_MAIN_DB && p->pWritable ){
+    if( iAmt<p->nPagesize 
+     && p->nPagesize%iAmt==0 
+     && iOfst>=(PENDING_BYTE+512) 
+     && iOfst+iAmt<=PENDING_BYTE+p->nPagesize
+    ){
+      /* No-op. This special case is hit when the backup code is copying a
+      ** to a database with a larger page-size than the source database and
+      ** it needs to fill in the non-locking-region part of the original
+      ** pending-byte page.
+      */
+    }else{
+      u32 pgno = iOfst/p->nPagesize + 1;
+      assert( (iAmt==1||iAmt==p->nPagesize) && ((iOfst+iAmt)%p->nPagesize)==0 );
+      assert( pgno<=p->nPage || p->nSync>0 );
+      assert( pgno>p->nPage || sqlite3BitvecTest(p->pWritable, pgno) );
+    }
+  }
+
+  rc = sqlite3OsWrite(p->pReal, zBuf, iAmt, iOfst);
+  if( (p->flags&SQLITE_OPEN_MAIN_JOURNAL) && iAmt==12 ){
+    jt_file *pMain = locateDatabaseHandle(p->zName);
+    int rc2 = readJournalFile(p, pMain);
+    if( rc==SQLITE_OK ) rc = rc2;
+  }
+  return rc;
+}
+
+/*
+** Truncate an jt-file.
+*/
+static int jtTruncate(sqlite3_file *pFile, sqlite_int64 size){
+  jt_file *p = (jt_file *)pFile;
+  if( p->flags&SQLITE_OPEN_MAIN_JOURNAL && size==0 ){
+    /* Truncating a journal file. This is the end of a transaction. */
+    jt_file *pMain = locateDatabaseHandle(p->zName);
+    closeTransaction(pMain);
+  }
+  if( p->flags&SQLITE_OPEN_MAIN_DB && p->pWritable ){
+    u32 pgno;
+    u32 locking_page = (u32)(PENDING_BYTE/p->nPagesize+1);
+    for(pgno=size/p->nPagesize+1; pgno<=p->nPage; pgno++){
+      assert( pgno==locking_page || sqlite3BitvecTest(p->pWritable, pgno) );
+    }
+  }
+  return sqlite3OsTruncate(p->pReal, size);
 }
 
 /*
@@ -787,7 +813,13 @@ static int jtSleep(sqlite3_vfs *pVfs, int nMicro){
 ** Return the current time as a Julian Day number in *pTimeOut.
 */
 static int jtCurrentTime(sqlite3_vfs *pVfs, double *pTimeOut){
-  return sqlite3OsCurrentTime(g.pVfs, pTimeOut);
+  return g.pVfs->xCurrentTime(g.pVfs, pTimeOut);
+}
+/*
+** Return the current time as a Julian Day number in *pTimeOut.
+*/
+static int jtCurrentTimeInt64(sqlite3_vfs *pVfs, sqlite3_int64 *pTimeOut){
+  return g.pVfs->xCurrentTimeInt64(g.pVfs, pTimeOut);
 }
 
 /**************************************************************************
@@ -807,6 +839,11 @@ int jt_register(char *zWrap, int isDefault){
     return SQLITE_ERROR;
   }
   jt_vfs.szOsFile = sizeof(jt_file) + g.pVfs->szOsFile;
+  if( g.pVfs->iVersion==1 ){
+    jt_vfs.iVersion = 1;
+  }else if( g.pVfs->xCurrentTimeInt64==0 ){
+    jt_vfs.xCurrentTimeInt64 = 0;
+  }
   sqlite3_vfs_register(&jt_vfs, isDefault);
   return SQLITE_OK;
 }
@@ -814,7 +851,7 @@ int jt_register(char *zWrap, int isDefault){
 /*
 ** Uninstall the jt VFS, if it is installed.
 */
-void jt_unregister(){
+void jt_unregister(void){
   sqlite3_vfs_unregister(&jt_vfs);
 }
 

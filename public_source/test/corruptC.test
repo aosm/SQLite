@@ -15,12 +15,17 @@
 # data base file, then tests that single byte corruptions in 
 # increasingly larger quantities are handled gracefully.
 #
-# $Id: corruptC.test,v 1.10 2008/11/19 18:43:07 drh Exp $
+# $Id: corruptC.test,v 1.14 2009/07/11 06:55:34 danielk1977 Exp $
 
 catch {file delete -force test.db test.db-journal test.bu}
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
+
+# Do not use a codec for tests in this file, as the database file is
+# manipulated directly using tcl scripts (using the [hexio_write] command).
+#
+do_not_use_codec
 
 # Construct a compact, dense database for testing.
 #
@@ -67,7 +72,7 @@ sqlite3 db test.db
 set fsize [file size test.db]
 
 # Set a quasi-random random seed. 
-if {[info exists SOAKTEST]} {
+if {[info exists ::G(issoak)]} {
   # If we are doing SOAK tests, we want a different
   # random seed for each run.  Ideally we would like 
   # to use [clock clicks] or something like that here.
@@ -94,8 +99,7 @@ do_test corruptC-2.1 {
 
   sqlite3 db test.db
   catchsql {PRAGMA integrity_check}
-} {0 {{*** in database main ***
-Corruption detected in header on page 3}}}
+} {1 {database disk image is malformed}}
 
 # test that a corrupt content offset size is handled (seed 5649)
 do_test corruptC-2.2 {
@@ -155,9 +159,12 @@ do_test corruptC-2.5 {
   catchsql {BEGIN; UPDATE t2 SET y='abcdef-uvwxyz'; ROLLBACK;}
   catchsql {PRAGMA integrity_check}
 } {0 {{*** in database main ***
-Corruption detected in cell 710 on page 4
-Multiple uses for byte 661 of page 4
-Fragmented space is 249 byte reported as 21 on page 4}}}
+Page 4: btreeInitPage() returns error code 11}}}
+
+# {0 {{*** in database main ***
+# Corruption detected in cell 710 on page 4
+# Multiple uses for byte 661 of page 4
+# Fragmented space is 249 byte reported as 21 on page 4}}}
 
 # test that a corrupt free cell size is handled (seed 169595)
 do_test corruptC-2.6 {
@@ -260,10 +267,36 @@ do_test corruptC-2.13 {
   catchsql {BEGIN; CREATE TABLE t3 AS SELECT x,3 as y FROM t2 WHERE rowid%5!=0; ROLLBACK;}
 } {1 {database disk image is malformed}}
 
+do_test corruptC-2.14 {
+  db close
+  copy_file test.bu test.db
+
+  sqlite3 db test.db
+  set blob [string repeat abcdefghij 10000]
+  execsql { INSERT INTO t1 VALUES (1, $blob) }
+
+  sqlite3 db test.db
+  set filesize [file size test.db]
+  hexio_write test.db [expr $filesize-2048] 00000001
+  catchsql {DELETE FROM t1 WHERE rowid = (SELECT max(rowid) FROM t1)}
+} {1 {database disk image is malformed}}
+
+# At one point this particular corrupt database was causing a buffer
+# overread. Which caused a crash in a run of all.test once.
+#
+do_test corruptC-2.15 {
+  db close
+  copy_file test.bu test.db
+  hexio_write test.db 986 b9
+  sqlite3 db test.db
+  catchsql {SELECT count(*) FROM sqlite_master;}
+} {1 {malformed database schema (t1i1) - no such table: main.t1}}
 
 #
-# now test for a series of quasi-random seeds
-for {set tn 0} {$tn<1024} {incr tn 1} {
+# Now test for a series of quasi-random seeds.
+# We loop over the entire file size and touch
+# each byte at least once.
+for {set tn 0} {$tn<$fsize} {incr tn 1} {
 
   # setup for test
   db close
@@ -277,9 +310,16 @@ for {set tn 0} {$tn<1024} {incr tn 1} {
   set last 0
   for {set i 1} {$i<=512 && !$last} {incr i 1} {
 
-    # insert random byte at random location
     db close
-    set roffset [random $fsize]
+    if {$i==1} {
+      # on the first corrupt value, use location $tn
+      # this ensures that we touch each location in the 
+      # file at least once.
+      set roffset $tn
+    } else { 
+      # insert random byte at random location
+      set roffset [random $fsize]
+    }
     set rbyte [format %02x [random 255]]
 
     # You can uncomment the following to have it trace

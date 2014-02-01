@@ -1,7 +1,8 @@
 
-SDKROOT="/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS3.0.Internal.sdk"
+OSVERSION="3.1"
+SDKROOT="/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS${OSVERSION}.Internal.sdk"
 TDIR="/tmp/tcl_root_dir"
-TCLTARBALL="/Network/Servers/harris/Volumes/haus/xdesign/roots/sqlite/tcl-75_7A161.tgz"
+TCLTARBALL="/Network/Servers/harris/Volumes/haus/xdesign/roots/sqlite/tcl8.4_7A269.tgz"
 
 if [ ! -d ${SDKROOT} ] ; then 
   echo "Can't install TCL root, SDK is missing"
@@ -9,7 +10,7 @@ else
   rm -rf ${TDIR}
   mkdir ${TDIR}
 
-  if [ ! -d "${SDKROOT}/Library/Frameworks/Tcl.framework" ]; then
+  if [ ! -d "${SDKROOT}/System/Library/Frameworks/Tcl.framework" ]; then
     echo "Installing TCL root in ${SDKROOT}"
     (cd ${SDKROOT}; sudo tar xfz ${TCLTARBALL})
   fi

@@ -10,8 +10,6 @@
 **
 *************************************************************************
 **
-** $Id: test_onefile.c,v 1.11 2009/02/10 18:54:03 danielk1977 Exp $
-**
 ** OVERVIEW:
 **
 **   This file contains some example code demonstrating how the SQLite 
@@ -200,7 +198,8 @@ static fs_vfs_t fs_vfs = {
     fsDlClose,                                  /* xDlClose */
     fsRandomness,                               /* xRandomness */
     fsSleep,                                    /* xSleep */
-    fsCurrentTime                               /* xCurrentTime */
+    fsCurrentTime,                              /* xCurrentTime */
+    0                                           /* xCurrentTimeInt64 */
   }, 
   0,                                            /* pFileList */
   0                                             /* pParent */
@@ -219,7 +218,11 @@ static sqlite3_io_methods fs_io_methods = {
   fsCheckReservedLock,          /* xCheckReservedLock */
   fsFileControl,                /* xFileControl */
   fsSectorSize,                 /* xSectorSize */
-  fsDeviceCharacteristics       /* xDeviceCharacteristics */
+  fsDeviceCharacteristics,      /* xDeviceCharacteristics */
+  0,                            /* xShmMap */
+  0,                            /* xShmLock */
+  0,                            /* xShmBarrier */
+  0                             /* xShmUnmap */
 };
 
 
@@ -236,7 +239,11 @@ static sqlite3_io_methods tmp_io_methods = {
   tmpCheckReservedLock,         /* xCheckReservedLock */
   tmpFileControl,               /* xFileControl */
   tmpSectorSize,                /* xSectorSize */
-  tmpDeviceCharacteristics      /* xDeviceCharacteristics */
+  tmpDeviceCharacteristics,     /* xDeviceCharacteristics */
+  0,                            /* xShmMap */
+  0,                            /* xShmLock */
+  0,                            /* xShmBarrier */
+  0                             /* xShmUnmap */
 };
 
 /* Useful macros used in several places */
@@ -810,7 +817,7 @@ static int fsCurrentTime(sqlite3_vfs *pVfs, double *pTimeOut){
 ** true, the fs vfs becomes the new default vfs. It is the only publicly
 ** available function in this file.
 */
-int fs_register(){
+int fs_register(void){
   if( fs_vfs.pParent ) return SQLITE_OK;
   fs_vfs.pParent = sqlite3_vfs_find(0);
   fs_vfs.base.mxPathname = fs_vfs.pParent->mxPathname;

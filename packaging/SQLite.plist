@@ -1,22 +1,37 @@
-(
-	{
-		OpenSourceProject = SQLite;
-		OpenSourceVersion = "3.6.12";
-		OpenSourceURL = "http://www.sqlite.org/sqlite-3.6.12.tar.gz";
-		OpenSourceSHA1 = "05ffb484d264030de41ee4bde0915bf1900d5f32";
-		OpenSourceImportDate = "Apr 6, 2009";
-		"OpenSourceModifications" = (
-			"src/mem1.c",
-			"src/os_unix.c",
-			"src/pcache1.c",
-			"src/pcache_purgeable.c",
-			"src/sqlite.h.in",
-			"src/sqliteInt.h",
-			"src/vdbe.c",
-			"src/vdbeapi.c",
-			"src/walker.c",
-		);
-		OpenSourceLicense = "Public Domain";
-		"OpenSourceLicenseFile" = "SQLite.txt";
-	},
-)
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<array>
+	<dict>
+		<key>OpenSourceProject</key>
+		<string>SQLite</string>
+		<key>OpenSourceVersion</key>
+		<string>3.6.22</string>
+		<key>OpenSourceWebsiteURL</key>
+		<string>http://www.sqlite.org</string>
+		<key>OpenSourceURL</key>
+		<string>http://www.sqlite.org/src/zip/SQLite-5c0afe70a5.zip?uuid=5c0afe70a5ee2b378896bf30426823dc5ae4e95c</string>
+		<key>OpenSourceSHA1</key>
+		<string>408613b2ec9fd8df33079cee397057d5085141f2</string>
+		<key>OpenSourceImportDate</key>
+		<string>2010-02-26</string>
+		<key>OpenSourceModifications</key>
+		<array>
+			<string>src/main.c</string>
+			<string>src/mutex.c</string>
+			<string>src/mutex_unix.c</string>
+			<string>src/os_unix.c</string>
+			<string>src/pcache1.c</string>
+			<string>src/pcache_purgeable.c</string>
+			<string>src/sqlite.h.in</string>
+			<string>src/sqliteInt.h</string>
+			<string>src/util.c</string>
+			<string>src/vdbe.c</string>
+		</array>
+		<key>OpenSourceLicense</key>
+		<string>Public Domain</string>
+		<key>OpenSourceLicenseFile</key>
+		<string>SQLite.txt</string>
+	</dict>
+</array>
+</plist>

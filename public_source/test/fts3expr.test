@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this script is testing the FTS3 module.
 #
-# $Id: fts3expr.test,v 1.7 2009/03/12 15:43:48 danielk1977 Exp $
+# $Id: fts3expr.test,v 1.9 2009/07/28 16:44:26 danielk1977 Exp $
 #
 
 set testdir [file dirname $argv0]
@@ -122,8 +122,11 @@ do_test fts3expr-1.11 {
 do_test fts3expr-1.14 {
   test_fts3expr {a:one two}
 } {AND {PHRASE 0 0 one} {PHRASE 3 0 two}}
-do_test fts3expr-1.15 {
+do_test fts3expr-1.15.1 {
   test_fts3expr {one b:two}
+} {AND {PHRASE 3 0 one} {PHRASE 1 0 two}}
+do_test fts3expr-1.15.2 {
+  test_fts3expr {one B:two}
 } {AND {PHRASE 3 0 one} {PHRASE 1 0 two}}
 
 do_test fts3expr-1.16 {
@@ -333,53 +336,53 @@ do_test fts3expr-4.1 {
 # Mismatched parenthesis:
 do_test fts3expr-4.2.1 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'example AND (hello OR world))' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [example AND (hello OR world))]}}
 do_test fts3expr-4.2.2 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'example AND (hello OR world' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [example AND (hello OR world]}}
 do_test fts3expr-4.2.3 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH '(hello' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [(hello]}}
 do_test fts3expr-4.2.4 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH '(' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [(]}}
 do_test fts3expr-4.2.5 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH ')' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [)]}}
 
 do_test fts3expr-4.2.6 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'example (hello world' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [example (hello world]}}
 
 # Unterminated quotation marks:
 do_test fts3expr-4.3.1 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'example OR "hello world' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [example OR "hello world]}}
 do_test fts3expr-4.3.2 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'example OR hello world"' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [example OR hello world"]}}
 
 # Binary operators without the required operands.
 do_test fts3expr-4.4.1 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'OR hello world' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [OR hello world]}}
 do_test fts3expr-4.4.2 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'hello world OR' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [hello world OR]}}
 do_test fts3expr-4.4.3 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'one (hello world OR) two' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [one (hello world OR) two]}}
 do_test fts3expr-4.4.4 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'one (OR hello world) two' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [one (OR hello world) two]}}
 
 # NEAR operators with something other than phrases as arguments.
 do_test fts3expr-4.5.1 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH '(hello OR world) NEAR one' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [(hello OR world) NEAR one]}}
 do_test fts3expr-4.5.2 {
   catchsql { SELECT * FROM t1 WHERE t1 MATCH 'one NEAR (hello OR world)' }
-} {1 {SQL logic error or missing database}}
+} {1 {malformed MATCH expression: [one NEAR (hello OR world)]}}
 
 #------------------------------------------------------------------------
 # The following OOM tests are designed to cover cases in fts3_expr.c.
@@ -463,10 +466,25 @@ foreach {id expr res} {
   13 "((((((one two OR four five)))))) NOT three" {3 11 19 24 25 26 27}
 
 } {
-  do_test fts3expr-6.$id {
+  do_test fts3expr-6.1.$id {
     execsql { SELECT rowid FROM t1 WHERE t1 MATCH $expr ORDER BY rowid }
   } $res
 }
+
+set sqlite_fts3_enable_parentheses 0
+foreach {id expr res} {
+  1 "one -two three"  {5 13 21 29}
+  2 "-two one three"  {5 13 21 29}
+  3 "one three -two"  {5 13 21 29}
+  4 "-one -two three" {4 12 20 28}
+  5 "three -one -two" {4 12 20 28}
+  6 "-one three -two" {4 12 20 28}
+} {
+  do_test fts3expr-6.2.$id {
+    execsql { SELECT rowid FROM t1 WHERE t1 MATCH $expr ORDER BY rowid }
+  } $res
+}
+set sqlite_fts3_enable_parentheses 1
 
 do_test fts3expr-7.1 {
   execsql {
@@ -475,6 +493,7 @@ do_test fts3expr-7.1 {
     SELECT * FROM test WHERE keyword MATCH '""';
   }
 } {}
+
 
 set sqlite_fts3_enable_parentheses 0
 finish_test

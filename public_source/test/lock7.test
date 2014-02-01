@@ -1,4 +1,4 @@
-# 2008 June 28
+# 2009 August 17
 #
 # The author disclaims copyright to this source code.  In place of
 # a legal notice, here is a blessing:
@@ -8,113 +8,54 @@
 #    May you share freely, never taking more than you give.
 #
 #***********************************************************************
-# This file implements regression tests for SQLite library.  The
-# focus of this script is database locks.
 #
-# $Id: lock5.test,v 1.6 2008/12/04 12:34:16 drh Exp $
+# Check that reading the database schema from within an active transaction
+# does not establish a SHARED lock on the database file if one is not
+# already held (or, more accurately, that the SHARED lock is released after
+# reading the database schema).
+#
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 
-# This file is only run if using the unix backend compiled with the
-# SQLITE_ENABLE_LOCKING_STYLE macro.
-db close
-if {[catch {sqlite3 db test.db -vfs unix-none} msg]} {
-  finish_test
-  return
-}
-db close
-file delete -force test.db.lock
+do_test lock7-1.1 {
+  execsql { CREATE TABLE t1(a, b) }
+  db close
 
-ifcapable lock_proxy_pragmas {
-  set ::using_proxy 0
-  foreach {name value} [array get env SQLITE_FORCE_PROXY_LOCKING] {
-    set ::using_proxy $value
-  }
-  # Disable the proxy locking for these tests
-  set env(SQLITE_FORCE_PROXY_LOCKING) "0"
-}
+  sqlite3 db1 test.db
+  sqlite3 db2 test.db
 
+  db1 eval {BEGIN}
+  db2 eval {BEGIN}
+} {}
 
-#####################################################################
+do_test lock7-1.2 {
+  execsql { PRAGMA lock_status } db1
+} {main unlocked temp closed}
+do_test lock7-1.3 {
+  execsql { PRAGMA lock_status } db2
+} {main unlocked temp closed}
 
-# test proxy locking readonly file system handling
-#
-ifcapable lock_proxy_pragmas {
-  if {[file exists /usr/bin/hdiutil]} {
+do_test lock7-1.4 {
+  catchsql { INSERT INTO t1 VALUES(1, 1) } db1
+} {0 {}}
+do_test lock7-1.5 {
+  catchsql { INSERT INTO t1 VALUES(2, 2) } db2
+} {1 {database is locked}}
 
-    puts "Creating readonly file system for proxy locking tests..."
-    if {[file exists /Volumes/readonly]} {
-      exec hdiutil detach /Volumes/readonly
-    }
-    if {[file exists readonly.dmg]} {
-      file delete readonly.dmg
-    }
-    exec hdiutil create -megabytes 1 -fs HFS+ readonly.dmg -volname readonly
-    exec hdiutil attach readonly.dmg
-    set sqlite_hostid_num 4
-    set env(SQLITE_FORCE_PROXY_LOCKING) "1"
+do_test lock7-1.6 {
+  execsql { PRAGMA lock_status } db1
+} {main reserved temp closed}
+do_test lock7-1.7 {
+  execsql { PRAGMA lock_status } db2
+} {main unlocked temp closed}
 
-    sqlite3 db2 /Volumes/readonly/test1.db 
-    execsql {
-      create table x(y);
-    } db2
-    db2 close
+do_test lock7-1.8 {
+  execsql { COMMIT } db1
+} {}
 
-    set sqlite_hostid_num 5
-    sqlite3 db2 /Volumes/readonly/test2.db 
-    execsql {
-      create table x(y);
-    } db2
-    db2 close
-
-    set env(SQLITE_FORCE_PROXY_LOCKING) "0"
-    sqlite3 db2 /Volumes/readonly/test3.db 
-    execsql {
-      create table x(y);
-    } db2
-    db2 close
-    set env(SQLITE_FORCE_PROXY_LOCKING) "1"
-    exec hdiutil detach /Volumes/readonly
-    exec hdiutil attach -readonly readonly.dmg
-
-    do_test lock5-proxy2.0 {
-      sqlite3 db2 /Volumes/readonly/test1.db
-      catchsql {
-        select * from sqlite_master;
-      } db2
-    } {1 {database is locked}}
-    catch { db2 close }
-    
-    do_test lock5-proxy2.1 {
-      sqlite3 db2 /Volumes/readonly/test2.db
-      catchsql {
-        select * from sqlite_master;
-      } db2
-    } {0 {table x x 2 {CREATE TABLE x(y)}}}
-    catch { db2 close }
-
-    do_test lock5-proxy2.2 {
-      sqlite3 db2 /Volumes/readonly/test3.db
-      catchsql {
-        select * from sqlite_master;
-      } db2
-    } {0 {table x x 2 {CREATE TABLE x(y)}}}
-    catch { db2 close }
-
-    exec hdiutil detach /Volumes/readonly
-    file delete readonly.dmg
-  }
-  set env(SQLITE_FORCE_PROXY_LOCKING) "0"
-  set sqlite_hostid_num 0
-}
-
-#####################################################################
-
-file delete -force test.db
-
-ifcapable lock_proxy_pragmas {
-  set env(SQLITE_FORCE_PROXY_LOCKING) $::using_proxy
-}
+db1 close
+db2 close
 
 finish_test
+

@@ -10,7 +10,7 @@
 #***********************************************************************
 # This file implements regression tests for SQLite library.
 #
-# $Id: misc7.test,v 1.28 2009/02/10 05:45:42 danielk1977 Exp $
+# $Id: misc7.test,v 1.29 2009/07/16 18:21:18 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -259,24 +259,22 @@ file delete -force test.db-journal
 sqlite3 db test.db
 
 ifcapable explain {
-  do_test misc7-14.1 {
-    execsql {
-      CREATE TABLE abc(a PRIMARY KEY, b, c);
-    }
-    execsql {
-      EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE rowid = 1;
-    }
-  } {0 0 {TABLE abc AS t2 USING PRIMARY KEY}}
-  do_test misc7-14.2 {
-    execsql {
-      EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE a = 1;
-    }
-  } {0 0 {TABLE abc AS t2 WITH INDEX sqlite_autoindex_abc_1}}
-  do_test misc7-14.3 {
-    execsql {
-      EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 ORDER BY a;
-    }
-  } {0 0 {TABLE abc AS t2 WITH INDEX sqlite_autoindex_abc_1 ORDER BY}}
+  do_execsql_test misc7-14.1 {
+    CREATE TABLE abc(a PRIMARY KEY, b, c);
+    EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE rowid = 1;
+  } {
+    0 0 0 {SEARCH TABLE abc AS t2 USING INTEGER PRIMARY KEY (rowid=?) (~1 rows)}
+  }
+  do_execsql_test misc7-14.2 {
+    EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE a = 1;
+  } {0 0 0 
+     {SEARCH TABLE abc AS t2 USING INDEX sqlite_autoindex_abc_1 (a=?) (~1 rows)}
+  }
+  do_execsql_test misc7-14.3 {
+    EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 ORDER BY a;
+  } {0 0 0 
+     {SCAN TABLE abc AS t2 USING INDEX sqlite_autoindex_abc_1 (~1000000 rows)}
+  }
 }
 
 db close
@@ -365,16 +363,6 @@ do_test misc7-16.X {
     SELECT count(*) FROM t3;
   }
 } {32}
-
-set sqlite_pager_n_sort_bucket 4
-do_test misc7-17 {
-  execsql {
-    PRAGMA integrity_check;
-    VACUUM;
-    PRAGMA integrity_check;
-  }
-} {ok ok}
-set sqlite_pager_n_sort_bucket 0
 
 #----------------------------------------------------------------------
 # Test the situation where a hot-journal is discovered but write-access

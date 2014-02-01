@@ -11,11 +11,9 @@
 #
 # The focus of this file is testing the r-tree extension.
 #
-# $Id: rtree1.test,v 1.6 2008/12/22 15:04:32 danielk1977 Exp $
-#
 
 if {![info exists testdir]} {
-  set testdir [file join [file dirname $argv0] .. .. test]
+  set testdir [file join [file dirname [info script]] .. .. test]
 }
 source [file join [file dirname [info script]] rtree_util.tcl]
 source $testdir/tester.tcl
@@ -392,5 +390,30 @@ do_test rtree-9.3 {
     WHERE b1.minX <= b2.maxX AND s1.id = b1.id;
   }
 } {1600}
+
+#-------------------------------------------------------------------------
+# Ticket #3970: Check that the error message is meaningful when a 
+# keyword is used as a column name.
+#
+do_test rtree-10.1 {
+  catchsql { CREATE VIRTUAL TABLE t7 USING rtree(index, x1, y1, x2, y2) }
+} {1 {near "index": syntax error}}
+
+#-------------------------------------------------------------------------
+# Test last_insert_rowid().
+# 
+do_test rtree-11.1 {
+  execsql {
+    CREATE VIRTUAL TABLE t8 USING rtree(idx, x1, x2, y1, y2);
+    INSERT INTO t8 VALUES(1, 1.0, 1.0, 2.0, 2.0);
+    SELECT last_insert_rowid();
+  }
+} {1}
+do_test rtree-11.2 {
+  execsql {
+    INSERT INTO t8 VALUES(NULL, 1.0, 1.0, 2.0, 2.0);
+    SELECT last_insert_rowid();
+  }
+} {2}
 
 finish_test

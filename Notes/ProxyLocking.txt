@@ -32,7 +32,12 @@ Specifying ":auto:" means that if there is a conch file with a matching host ID 
         For database path "/Users/me/foo.db" 
         The lock path will be "<tmpdir>/sqliteplocks/_Users_me_foo.db:auto:")
 
+sqlite3_open_v2 flag
+
+Include the SQLITE_OPEN_AUTOPROXY flag to sqlite3_open_v2 to automatically enable proxy locking on non-local file systems, using the :auto: style lock proxy file naming convention.
+
 Once a lock proxy is configured for a database connection, it can not be removed, however it may be switched to a different proxy path via the above APIs (assuming the conch file is not being held by another connection or process). 
+
 
 
 How proxy locking works

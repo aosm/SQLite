@@ -8,40 +8,73 @@
 # buildroot.sh should only be invoked from the root src directory
 #
 
-RELEASE="SnowLeopard"
-ARCHS="-arch ppc -arch i386 -arch x86_64"
+RELEASE="Barolo"
+OTHERARGS="-arch x86_64 -arch i386"
 SDKROOT=""
 TARGET="SQLite"
+PROJECT="SQLite"
 ROOTPKGSTYLE="NORMAL"
+BUILD_CMD="buildit"
+BUILD_TARGET="${TARGET}"
 
 if [ "$@ " == "-tcl " ]; then
   TARGET="SQLite_tcl"
 fi
 
 if [ "$@ " == "-embedded " ]; then
-  RELEASE="Kirkwood"
-  ARCHS="-arch armv6 -arch armv7"
-  SDKROOT="/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS3.0.Internal.sdk"
-  TARGET="SQLite"
+  RELEASE="Telluride"
+  BUILD_CMD="smartBuildit"
+  OTHERARGS="-showLog"
+  SDKVERSION="5.0"
+  BUILD_TARGET=""
   ROOTPKGSTYLE="BINARIES"
 fi
 
+if [ "$@ " == "-simulator " ]; then
+  RELEASE="Telluride"
+  SDKVERSION="5.0"
+# TARGET="libsqlite3_iPhoneSim"
+  BUILD_TARGET=""
+  TARGET="SQLite_Sim"
+  PROJECT="SQLite_Sim"
+  BUILD_CMD="smartBuildit"
+  OTHERARGS="-showLog"
+fi
+
+echo -n "Release name [default: ${RELEASE}] ? " ; read
+if [ "${REPLY} " != " " ]; then 
+  RELEASE=${REPLY}
+fi
+
+if [ "$@ " == "-embedded " ]; then
+  echo -n "SDK version [default: ${SDKVERSION}] ? " ; read
+  if [ "${REPLY} " != " " ]; then 
+    SDKVERSION=${REPLY}
+  fi
+  SDKROOT="/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS${SDKVERSION}.Internal.sdk"
+fi
+
+if [ "$@ " == "-simulator " ]; then
+  echo -n "SDK version [default: ${SDKVERSION}] ? " ; read
+  if [ "${REPLY} " != " " ]; then 
+    SDKVERSION=${REPLY}
+  fi
+  SDKROOT="/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator${SDKVERSION}.sdk"
+fi
+
 SRCROOT=`pwd`
-PROJECT="SQLite"
-BUILDENV=""
+ROOTBASE="/tmp/${PROJECT}.roots"
 
-if [ "${SDKROOT} " != " " ]; then
-  BUILDENV="SDKROOT=${SDKROOT}"
+BUILDIT_ARGS="-release ${RELEASE} -project ${PROJECT} ${OTHERARGS} ${SRCROOT}"
+if [ "${BUILD_TARGET} " != " " ]; then
+  BUILDIT_ARGS="-target ${BUILD_TARGET} ${BUILDIT_ARGS}"
 fi
 
-if [ "${BUILDENV} " != " " ]; then
-  BUILDIT_ARGS="-target ${TARGET} -release ${RELEASE} -project ${PROJECT} ${ARCHS} ${SRCROOT} -- ${BUILDENV}"
-else
-  BUILDIT_ARGS="-target ${TARGET} -release ${RELEASE} -project ${PROJECT} ${ARCHS} ${SRCROOT}"
+if [ -e "${ROOTBASE}" ]; then
+  echo "Moving previous root to ${ROOTBASE}.prev"
+  sudo rm -rf "${ROOTBASE}.prev"
+  sudo mv "${ROOTBASE}" "${ROOTBASE}.prev"
 fi
-
-echo "Building: buildit ${BUILDIT_ARGS}"
-sudo ~rc/bin/buildit ${BUILDIT_ARGS}
 
 DATESTAMP=`date "+%Y%m%d"`
 SQLITE_VERSION=`cat public_source/VERSION`
@@ -50,26 +83,39 @@ VERSIONPLIST="${SDKROOT}/System/Library/CoreServices/SystemVersion.plist"
 VERSIONKEY="ProductBuildVersion"
 BUILDVERSION=`grep -A 1 ${VERSIONKEY} ${VERSIONPLIST} | grep -v ${VERSIONKEY} | sed 's|.*<string>\(.*\)</string>.*|\1|g'`
 
-ROOTBALL="${TARGET}_${SQLITE_VERSION}_${DATESTAMP}_${BUILDVERSION}.tgz"
-SROOTBALL="${TARGET}-XX-${DATESTAMP}-${BUILDVERSION}.tgz"
-
-ROOTDST="/tmp/${PROJECT}.roots/${PROJECT}~dst"
-
-echo "Creating tarball from root in destination dir: ${ROOTDST}"
-
-if [ ${ROOTPKGSTYLE} == "BINARIES" ]; then
-  echo "( cd ${ROOTDST}; tar -cvzp -f /tmp/${ROOTBALL} --exclude='*local*' --exclude='*share*' --exclude='*include*' . )"
-  ( cd ${ROOTDST}; tar -cvz -f /tmp/${ROOTBALL} --exclude='*local*' --exclude='*share*' --exclude='*include*' . )
+echo "Building ${TARGET} version ${SQLITE_VERSION} for ${RELEASE} using ${BUILDVERSION}"
+if [ "${BUILD_CMD}" == "smartBuildit" ]; then
+  echo sudo ~luna/bin/smartBuildit ${BUILDIT_ARGS}
+  sudo ~luna/bin/smartBuildit ${BUILDIT_ARGS}
 else
-  echo "( cd ${ROOTDST}; tar -cvzp -f /tmp/${ROOTBALL} . )"
-  ( cd ${ROOTDST}; tar -cvz -f /tmp/${ROOTBALL} . )
+  echo sudo ~rc/bin/buildit ${BUILDIT_ARGS}
+  sudo ~rc/bin/buildit ${BUILDIT_ARGS}
 fi
 
 
-echo "---------------------"
-echo "To copy a NON-SUBMITTED root:"
-echo "  sudo -u xdesign cp /tmp/${ROOTBALL} ~xdesign/roots/sqlite/${ROOTBALL}"
-echo ""
-echo "To copy a SUBMITTED root (replace 'XX' with the submission number)"
-echo "  sudo -u xdesign cp /tmp/${ROOTBALL} ~xdesign/roots/sqlite/submission/${SROOTBALL}"
-echo ""
+ROOTBALL="${TARGET}_${SQLITE_VERSION}_${DATESTAMP}_${BUILDVERSION}.tgz"
+SROOTBALL="${TARGET}-XX-${DATESTAMP}-${BUILDVERSION}.tgz"
+
+ROOTDST="${ROOTBASE}/${PROJECT}~dst"
+
+if [ -e "${ROOTDST}" ]; then
+  echo "Creating tarball from root in destination dir: ${ROOTDST}"
+
+  if [ ${ROOTPKGSTYLE} == "BINARIES" ]; then
+    echo "( cd ${ROOTDST}; tar -cvzp -f /tmp/${ROOTBALL} --exclude='*local*' --exclude='*share*' --exclude='*include*' . )"
+    ( cd ${ROOTDST}; tar -cvz -f /tmp/${ROOTBALL} --exclude='*local*' --exclude='*share*' --exclude='*include*' . )
+  else
+    echo "( cd ${ROOTDST}; tar -cvzp -f /tmp/${ROOTBALL} . )"
+    ( cd ${ROOTDST}; tar -cvz -f /tmp/${ROOTBALL} . )
+  fi
+
+
+  echo "---------------------"
+  echo "  sudo -u xdesign cp /tmp/${ROOTBALL} ~xdesign/roots/sqlite/${ROOTBALL}"
+  echo ""
+  if [ "$@ " == "-embedded " ]; then
+    echo "  rsync -av --exclude='*local*' --exclude='*share*' --exclude='*include*' ${ROOTDST}/ rsync://root@localhost:10873/root/"
+  fi
+
+fi
+
