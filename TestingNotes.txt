@@ -14,6 +14,9 @@ KNOWN FAILURES
 
 All unit tests should pass when running in 32 bit mode on ppc or intel hardware on the local file system.  There are a few unit test failures that happen when running in 64-bit mode or on different file systems, the following errors are known and tracked by radars indicated (but are not Leoaprd submission blockers):
 
+corrupt4-1.2 is failing, this is a new unit test added with patch for <rdar://problem/5414173> fails because our sources are based on 3.4.0 and the unit test depends on a new pragma that was added in 3.4.1.
+
+
 TEST          ARCH             FILESYSTEM
 
 <rdar://problem/5033933>

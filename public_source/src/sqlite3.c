@@ -4786,6 +4786,7 @@ struct sqlite3 {
   int errMask;                  /* & result codes with this before returning */
   u8 autoCommit;                /* The auto-commit flag. */
   u8 temp_store;                /* 1: file 2: memory 0: default */
+  char nextAutovac;             /* Autovacuum setting after vacuum */
   int nTable;                   /* Number of tables in the database */
   CollSeq *pDfltColl;           /* The default collating sequence (BINARY) */
   i64 lastRowid;                /* ROWID of most recent insert (see above) */
@@ -26543,12 +26544,18 @@ static int freePage(MemPage *pPage){
       /* The trunk is full.  Turn the page being freed into a new
       ** trunk page with no leaves. */
       rc = sqlite3PagerWrite(pPage->pDbPage);
-      if( rc ) return rc;
-      put4byte(pPage->aData, pTrunk->pgno);
-      put4byte(&pPage->aData[4], 0);
-      put4byte(&pPage1->aData[32], pPage->pgno);
-      TRACE(("FREE-PAGE: %d new trunk page replacing %d\n",
-              pPage->pgno, pTrunk->pgno));
+/*      <rdar://problem/5414173> Crash with corrupted database
+**      patch applied from http://www.sqlite.org/cvstrac/chngview?cn=4414
+*/
+      if( rc==SQLITE_OK ){
+        put4byte(pPage->aData, pTrunk->pgno);
+        put4byte(&pPage->aData[4], 0);
+        put4byte(&pPage1->aData[32], pPage->pgno);
+        TRACE(("FREE-PAGE: %d new trunk page replacing %d\n",
+               pPage->pgno, pTrunk->pgno));
+      }
+    }else if( k<0 ){
+        rc = SQLITE_CORRUPT;
     }else{
       /* Add the newly freed page as a leaf on the current trunk */
       rc = sqlite3PagerWrite(pTrunk->pDbPage);
@@ -52055,6 +52062,7 @@ static void sqlite3Pragma(
       int eAuto = getAutoVacuum(zRight);
       if( eAuto>=0 ){
         sqlite3BtreeSetAutoVacuum(pBt, eAuto);
+        db->nextAutovac = eAuto;
       }
     }
   }else
@@ -58705,7 +58713,8 @@ static int sqlite3RunVacuum(char **pzErrMsg, sqlite3 *db){
   }
 
 #ifndef SQLITE_OMIT_AUTOVACUUM
-  sqlite3BtreeSetAutoVacuum(pTemp, sqlite3BtreeGetAutoVacuum(pMain));
+    sqlite3BtreeSetAutoVacuum(pTemp, db->nextAutovac>=0 ? db->nextAutovac :
+                              sqlite3BtreeGetAutoVacuum(pMain));
 #endif
 
   /* Begin a transaction */
@@ -66978,6 +66987,7 @@ static int openDatabase(
   db->nDb = 2;
   db->aDb = db->aDbStatic;
   db->autoCommit = 1;
+  db->nextAutovac = -1;
   db->flags |= SQLITE_ShortColNames
 #if SQLITE_DEFAULT_FILE_FORMAT<4
                  | SQLITE_LegacyFileFmt

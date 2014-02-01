@@ -432,6 +432,7 @@ void sqlite3Pragma(
       int eAuto = getAutoVacuum(zRight);
       if( eAuto>=0 ){
         sqlite3BtreeSetAutoVacuum(pBt, eAuto);
+        db->nextAutovac = eAuto;
       }
     }
   }else

@@ -3721,12 +3721,18 @@ static int freePage(MemPage *pPage){
       /* The trunk is full.  Turn the page being freed into a new
       ** trunk page with no leaves. */
       rc = sqlite3PagerWrite(pPage->pDbPage);
-      if( rc ) return rc;
-      put4byte(pPage->aData, pTrunk->pgno);
-      put4byte(&pPage->aData[4], 0);
-      put4byte(&pPage1->aData[32], pPage->pgno);
-      TRACE(("FREE-PAGE: %d new trunk page replacing %d\n",
-              pPage->pgno, pTrunk->pgno));
+/*      <rdar://problem/5414173> Crash with corrupted database
+**      patch applied from http://www.sqlite.org/cvstrac/chngview?cn=4414
+*/
+      if( rc==SQLITE_OK ){
+        put4byte(pPage->aData, pTrunk->pgno);
+        put4byte(&pPage->aData[4], 0);
+        put4byte(&pPage1->aData[32], pPage->pgno);
+        TRACE(("FREE-PAGE: %d new trunk page replacing %d\n",
+               pPage->pgno, pTrunk->pgno));
+      }
+    }else if( k<0 ){
+      rc = SQLITE_CORRUPT;
     }else{
       /* Add the newly freed page as a leaf on the current trunk */
       rc = sqlite3PagerWrite(pTrunk->pDbPage);

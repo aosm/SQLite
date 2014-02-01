@@ -123,7 +123,8 @@ int sqlite3RunVacuum(char **pzErrMsg, sqlite3 *db){
   }
 
 #ifndef SQLITE_OMIT_AUTOVACUUM
-  sqlite3BtreeSetAutoVacuum(pTemp, sqlite3BtreeGetAutoVacuum(pMain));
+    sqlite3BtreeSetAutoVacuum(pTemp, db->nextAutovac>=0 ? db->nextAutovac :
+                                             sqlite3BtreeGetAutoVacuum(pMain));
 #endif
 
   /* Begin a transaction */

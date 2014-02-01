@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		661358EF0D06391300306A7B /* TestingNotes.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = TestingNotes.txt; path = ../TestingNotes.txt; sourceTree = SOURCE_ROOT; };
 		66542AFD0AC061A600CEBCDA /* loadext.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = loadext.c; sourceTree = "<group>"; };
 		66542AFE0AC061A600CEBCDA /* os_os2.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = os_os2.c; sourceTree = "<group>"; };
 		66542AFF0AC061A600CEBCDA /* os_os2.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = os_os2.h; sourceTree = "<group>"; };
@@ -1091,8 +1092,9 @@
 			isa = PBXGroup;
 			children = (
 				6674E9310B838B9F008EE18A /* CustomizationNotes.txt */,
-				6674E9320B838B9F008EE18A /* README.txt */,
 				66BB54760A30E7BB00782FBC /* EngineeringNotes.txt */,
+				6674E9320B838B9F008EE18A /* README.txt */,
+				661358EF0D06391300306A7B /* TestingNotes.txt */,
 			);
 			name = Documentation;
 			sourceTree = "<group>";
