@@ -1,0 +1,52 @@
+#
+# Customization Notes
+#
+# Describes how our sqlite sources differ from the public source it was 
+# based on.
+# 
+
+--------------------------- PUBLIC SOURCE -------------------------------
+
+Based on public sources:
+
+CURRENT:
+Location	http://sqlite.org/sqlite-3.4.0.tar.gz
+Date		7/3/2007
+
+--------------------------- CUSTOMIZATION -------------------------------
+
+M aclocal.m4
+M config.guess
+M config.sub
+M configure
+M ltmain.sh
+-- All of the above files were created automatically by following the autoconf file creation instructions described in the EngineeringNotes document.
+
+M Makefile.in 
+-- Converted to build with the src/sqlite3.c source file (which was generated from the other sources via the sqlite3.c target).  Note that this means that any changes to individual source files will not be built into the product unless the sqlite3.c file is rebuilt and copied into the src directory.
+
+A Makefile_orig.in
+-- Copy of original Makefile.in with added destination dir arg to tclinstaller.tcl
+
+M tclinstaller.tcl
+-- added additional command line argument to specify tcl install dir
+
+A sqlite3.def
+-- added to restrict the symbols exported by sqlite to only public symbols
+
+M src/vdbe.c
+M test/expr.test
+-- applied changes from http://www.sqlite.org/cvstrac/chngview?cn=4130 and http://www.sqlite.org/cvstrac/chngview?cn=4131
+
+M src/pager.c
+M test/exclusive2.test
+M test/vacuum2.test
+-- applied changes from http://www.sqlite.org/cvstrac/chngview?cn=4163
+
+A src/sqlite3.c
+-- the amalgamation file and header, created by combining all the source files into a single file as described on the sqlite website:
+	http://www.sqlite.org/cvstrac/wiki?p=TheAmalgamation
+	http://www.sqlite.org/cvstrac/wiki?p=SqliteBuildProcess
+-- further customization of the src/sqlite3.c file to keep the internal function sqlite3RegisterBuiltinFunctions symbol to work around binary compatibility issue <rdar://problem/5332238> SQLite 3.4.0 breaks Mail importer
+-- yet more customization of the src/sqlite3.c file to make sqlite3StrICmp visible so libtclsqlite3.dylib can see it and thus load (<rdar://problem/5393981>)
+
