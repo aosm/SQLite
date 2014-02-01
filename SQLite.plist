@@ -4,13 +4,13 @@
         <key>OpenSourceProject</key>
         <string>SQLite</string>
         <key>OpenSourceVersion</key>
-        <string>3.3.13</string>
+        <string>3.4.0</string>
         <key>OpenSourceURL</key>
-        <string>http://www.sqlite.org/sqlite-3.3.13.tar.gz</string>
+        <string>http://www.sqlite.org/sqlite-3.4.0.tar.gz</string>
         <key>OpenSourceSHA1</key>
-        <string>405d3f042d64d9ecbb42fff6d4c0dae4a1eeeda2</string>
+        <string>e3b4711a619a5af1ccb1232c76eb7534d25ab431</string>
         <key>OpenSourceImportDate</key>
-        <string>2007-02-14</string>
+        <string>2007-07-03</string>
         <key>OpenSourceModifications</key>
         <array>
                 <string>aclocal.m4</string>
@@ -19,12 +19,16 @@
                 <string>configure</string>
                 <string>ltmain.sh</string>
                 <string>Makefile.in</string>
+                <string>Makefile_orig.in</string>
+		<string>sqlite3.def</string>
                 <string>tclinstaller.tcl</string>
-		<string>src/os_unix.c</string>
+		<string>src/btree.c</string>
+		<string>src/main.c</string>
 		<string>src/pager.c</string>
-        <string>src/sqliteInt.h</string>
-        <string>src/util.c</string>
-        <string>src/vdbe.c</string>
+		<string>src/pragma.c</string>
+		<string>src/sqliteInt.h</string>
+		<string>src/vacuum.c</string>
+		<string>src/vdbe.c</string>
         </array>
         <key>OpenSourceLicense</key>
         <string>Public Domain</string>

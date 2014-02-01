@@ -17,7 +17,7 @@
 ** is also in a separate file.  This file contains only code for the core
 ** SQLite library.
 **
-** This amalgamation was generated on 2007-07-03 21:19:13 UTC.
+** This amalgamation was generated on 2009-02-27 01:32:30 UTC.
 */
 #define SQLITE_AMALGAMATION 1
 /************** Begin file sqlite3.h *****************************************/
@@ -13478,9 +13478,6 @@ static sqlite3LockingStyle sqlite3DetectLockingStyle(const char *filePath,
   if(!strcmp(fsInfo.f_fstypename, "smbfs"))
     return flockLockingStyle;
   
-  if(!strcmp(fsInfo.f_fstypename, "msdos"))
-    return dotlockLockingStyle;
-  
   if(!strcmp(fsInfo.f_fstypename, "webdav"))
     return unsupportedLockingStyle;
   
@@ -13510,6 +13507,31 @@ static int findLockInfo(
   struct openCnt *pOpen;
   rc = fstat(fd, &statbuf);
   if( rc!=0 ) return 1;
+
+  /* On OS X on an msdos filesystem, the inode number is reported
+  ** incorrectly for zero-size files.  See ticket #3260.  To work
+  ** around this problem (we consider it a bug in OS X, not SQLite)
+  ** we always increase the file size to 1 by writing a single byte
+  ** prior to accessing the inode number.  The one byte written is
+  ** an ASCII 'S' character which also happens to be the first byte
+  ** in the header of every SQLite database.  In this way, if there
+  ** is a race condition such that another thread has already populated
+  ** the first page of the database, no damage is done.
+  */
+  if (statbuf.st_size == 0) {
+    struct statfs fstatfsbuf;
+    rc = fstatfs(fd, &fstatfsbuf);
+    if (0 != rc) {
+      return 1;
+    }
+    if (0 == strncmp("msdos", fstatfsbuf.f_fstypename, 5)) {
+      write(fd, "S", 1);
+      rc = fstat(fd, &statbuf);
+      if (0 != rc) {
+        return 1;
+      }
+    }
+  }
 
   assert( sqlite3OsInMutex(1) );
   memset(&key1, 0, sizeof(key1));
@@ -14159,6 +14181,15 @@ static int unixFileSize(OsFile *id, i64 *pSize){
     return SQLITE_IOERR_FSTAT;
   }
   *pSize = buf.st_size;
+  
+  /* When opening a zero-size database, the findLockInfo() procedure
+  ** writes a single byte into that file in order to work around a bug
+  ** in the OS-X msdos filesystem.  In order to avoid problems with upper
+  ** layers, we need to report this file size as zero even though it is
+  ** really 1.   Ticket #3260.
+  */
+  if( *pSize==1 ) *pSize = 0;
+
   return SQLITE_OK;
 }
 
