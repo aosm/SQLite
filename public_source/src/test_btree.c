@@ -13,119 +13,10 @@
 ** is not included in the SQLite library.  It is used for automated
 ** testing of the SQLite library.
 **
-** $Id: test_btree.c,v 1.2 2007/05/08 11:27:16 drh Exp $
+** $Id: test_btree.c,v 1.8 2008/09/29 11:49:48 danielk1977 Exp $
 */
 #include "btreeInt.h"
 #include <tcl.h>
-
-/*
-** Print a disassembly of the given page on standard output.  This routine
-** is used for debugging and testing only.
-*/
-static int btreePageDump(
-  BtShared *pBt,         /* The Btree to be dumped */
-  int pgno,              /* The page to be dumped */
-  int recursive,         /* True to decend into child pages */
-  MemPage *pParent       /* Parent page */
-){
-  int rc;
-  MemPage *pPage;
-  int i, j, c;
-  int nFree;
-  u16 idx;
-  int hdr;
-  int nCell;
-  int isInit;
-  unsigned char *data;
-  char range[20];
-  unsigned char payload[20];
-
-  rc = sqlite3BtreeGetPage(pBt, (Pgno)pgno, &pPage, 0);
-  isInit = pPage->isInit;
-  if( pPage->isInit==0 ){
-    sqlite3BtreeInitPage(pPage, pParent);
-  }
-  if( rc ){
-    return rc;
-  }
-  hdr = pPage->hdrOffset;
-  data = pPage->aData;
-  c = data[hdr];
-  pPage->intKey = (c & (PTF_INTKEY|PTF_LEAFDATA))!=0;
-  pPage->zeroData = (c & PTF_ZERODATA)!=0;
-  pPage->leafData = (c & PTF_LEAFDATA)!=0;
-  pPage->leaf = (c & PTF_LEAF)!=0;
-  pPage->hasData = !(pPage->zeroData || (!pPage->leaf && pPage->leafData));
-  nCell = get2byte(&data[hdr+3]);
-  sqlite3DebugPrintf("PAGE %d:  flags=0x%02x  frag=%d   parent=%d\n", pgno,
-    data[hdr], data[hdr+7], 
-    (pPage->isInit && pPage->pParent) ? pPage->pParent->pgno : 0);
-  assert( hdr == (pgno==1 ? 100 : 0) );
-  idx = hdr + 12 - pPage->leaf*4;
-  for(i=0; i<nCell; i++){
-    CellInfo info;
-    Pgno child;
-    unsigned char *pCell;
-    int sz;
-    int addr;
-
-    addr = get2byte(&data[idx + 2*i]);
-    pCell = &data[addr];
-    sqlite3BtreeParseCellPtr(pPage, pCell, &info);
-    sz = info.nSize;
-    sqlite3_snprintf(sizeof(range),range,"%d..%d", addr, addr+sz-1);
-    if( pPage->leaf ){
-      child = 0;
-    }else{
-      child = get4byte(pCell);
-    }
-    sz = info.nData;
-    if( !pPage->intKey ) sz += info.nKey;
-    if( sz>sizeof(payload)-1 ) sz = sizeof(payload)-1;
-    memcpy(payload, &pCell[info.nHeader], sz);
-    for(j=0; j<sz; j++){
-      if( payload[j]<0x20 || payload[j]>0x7f ) payload[j] = '.';
-    }
-    payload[sz] = 0;
-    sqlite3DebugPrintf(
-      "cell %2d: i=%-10s chld=%-4d nk=%-4lld nd=%-4d payload=%s\n",
-      i, range, child, info.nKey, info.nData, payload
-    );
-  }
-  if( !pPage->leaf ){
-    sqlite3DebugPrintf("right_child: %d\n", get4byte(&data[hdr+8]));
-  }
-  nFree = 0;
-  i = 0;
-  idx = get2byte(&data[hdr+1]);
-  while( idx>0 && idx<pPage->pBt->usableSize ){
-    int sz = get2byte(&data[idx+2]);
-    sqlite3_snprintf(sizeof(range),range,"%d..%d", idx, idx+sz-1);
-    nFree += sz;
-    sqlite3DebugPrintf("freeblock %2d: i=%-10s size=%-4d total=%d\n",
-       i, range, sz, nFree);
-    idx = get2byte(&data[idx]);
-    i++;
-  }
-  if( idx!=0 ){
-    sqlite3DebugPrintf("ERROR: next freeblock index out of range: %d\n", idx);
-  }
-  if( recursive && !pPage->leaf ){
-    for(i=0; i<nCell; i++){
-      unsigned char *pCell = sqlite3BtreeFindCell(pPage, i);
-      btreePageDump(pBt, get4byte(pCell), 1, pPage);
-      idx = get2byte(pCell);
-    }
-    btreePageDump(pBt, get4byte(&data[hdr+8]), 1, pPage);
-  }
-  pPage->isInit = isInit;
-  sqlite3PagerUnref(pPage->pDbPage);
-  fflush(stdout);
-  return SQLITE_OK;
-}
-int sqlite3BtreePageDump(Btree *p, int pgno, int recursive){
-  return btreePageDump(p->pBt, pgno, recursive, 0);
-}
 
 /*
 ** Usage: sqlite3_shared_cache_report
@@ -140,17 +31,15 @@ int sqlite3BtreeSharedCacheReport(
   Tcl_Obj *CONST objv[]
 ){
 #ifndef SQLITE_OMIT_SHARED_CACHE
-  const ThreadData *pTd = sqlite3ThreadDataReadOnly();
-  if( pTd->useSharedData ){
-    BtShared *pBt;
-    Tcl_Obj *pRet = Tcl_NewObj();
-    for(pBt=pTd->pBtree; pBt; pBt=pBt->pNext){
-      const char *zFile = sqlite3PagerFilename(pBt->pPager);
-      Tcl_ListObjAppendElement(interp, pRet, Tcl_NewStringObj(zFile, -1));
-      Tcl_ListObjAppendElement(interp, pRet, Tcl_NewIntObj(pBt->nRef));
-    }
-    Tcl_SetObjResult(interp, pRet);
+  extern BtShared *sqlite3SharedCacheList;
+  BtShared *pBt;
+  Tcl_Obj *pRet = Tcl_NewObj();
+  for(pBt=GLOBAL(BtShared*,sqlite3SharedCacheList); pBt; pBt=pBt->pNext){
+    const char *zFile = sqlite3PagerFilename(pBt->pPager);
+    Tcl_ListObjAppendElement(interp, pRet, Tcl_NewStringObj(zFile, -1));
+    Tcl_ListObjAppendElement(interp, pRet, Tcl_NewIntObj(pBt->nRef));
   }
+  Tcl_SetObjResult(interp, pRet);
 #endif
   return TCL_OK;
 }
@@ -159,17 +48,19 @@ int sqlite3BtreeSharedCacheReport(
 ** Print debugging information about all cursors to standard output.
 */
 void sqlite3BtreeCursorList(Btree *p){
+#ifdef SQLITE_DEBUG
   BtCursor *pCur;
   BtShared *pBt = p->pBt;
   for(pCur=pBt->pCursor; pCur; pCur=pCur->pNext){
-    MemPage *pPage = pCur->pPage;
+    MemPage *pPage = pCur->apPage[pCur->iPage];
     char *zMode = pCur->wrFlag ? "rw" : "ro";
     sqlite3DebugPrintf("CURSOR %p rooted at %4d(%s) currently at %d.%d%s\n",
        pCur, pCur->pgnoRoot, zMode,
-       pPage ? pPage->pgno : 0, pCur->idx,
+       pPage ? pPage->pgno : 0, pCur->aiIdx[pCur->iPage],
        (pCur->eState==CURSOR_VALID) ? "" : " eof"
     );
   }
+#endif
 }
 
 
@@ -192,13 +83,14 @@ void sqlite3BtreeCursorList(Btree *p){
 ** This routine is used for testing and debugging only.
 */
 int sqlite3BtreeCursorInfo(BtCursor *pCur, int *aResult, int upCnt){
+#if 0
   int cnt, idx;
-  MemPage *pPage = pCur->pPage;
+  MemPage *pPage = pCur->apPage[pCur->iPage];
   BtCursor tmpCur;
   int rc;
 
   if( pCur->eState==CURSOR_REQUIRESEEK ){
-    rc = sqlite3BtreeRestoreOrClearCursorPosition(pCur);
+    rc = sqlite3BtreeRestoreCursorPosition(pCur);
     if( rc!=SQLITE_OK ){
       return rc;
     }
@@ -245,5 +137,6 @@ int sqlite3BtreeCursorInfo(BtCursor *pCur, int *aResult, int upCnt){
     aResult[10] = 0;
   }
   sqlite3BtreeReleaseTempCursor(&tmpCur);
+#endif
   return SQLITE_OK;
 }

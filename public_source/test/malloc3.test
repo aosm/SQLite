@@ -13,14 +13,16 @@
 # correctly. The emphasis of these tests are the _prepare(), _step() and
 # _finalize() calls.
 #
-# $Id: malloc3.test,v 1.10 2007/03/28 01:59:34 drh Exp $
+# $Id: malloc3.test,v 1.24 2008/10/14 15:54:08 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
+source $testdir/malloc_common.tcl
 
 # Only run these tests if memory debugging is turned on.
-if {[info command sqlite_malloc_stat]==""} {
-   puts "Skipping malloc tests: not compiled with -DSQLITE_MEMDEBUG..."
+#
+if {!$MEMDEBUG} {
+   puts "Skipping malloc3 tests: not compiled with -DSQLITE_MEMDEBUG..."
    finish_test
    return
 }
@@ -103,16 +105,16 @@ if {[info command sqlite_malloc_stat]==""} {
 # TEST. Each primitive has a single argument. Primitives are processed in
 # the order they are specified in the file.
 #
-# A TEST primitive specifies a TCL script as it's argument. When a TEST
+# A TEST primitive specifies a TCL script as its argument. When a TEST
 # directive is encountered the Tcl script is evaluated. Usually, this Tcl
 # script contains one or more calls to [do_test].
 #
-# A PREP primitive specifies an SQL script as it's argument. When a PREP
+# A PREP primitive specifies an SQL script as its argument. When a PREP
 # directive is encountered the SQL is evaluated using database connection
 # [db].
 #
 # The SQL primitives are where the action happens. An SQL primitive must
-# contain a single, valid SQL statement as it's argument. When an SQL
+# contain a single, valid SQL statement as its argument. When an SQL
 # primitive is encountered, it is evaluated one or more times to test the
 # behaviour of the system when malloc() fails during preparation or
 # execution of said statement. The Nth time the statement is executed,
@@ -148,6 +150,7 @@ if {[info command sqlite_malloc_stat]==""} {
 set ::run_test_script [list]
 proc TEST {id t} {lappend ::run_test_script -test [list $id $t]}
 proc PREP {p} {lappend ::run_test_script -prep [string trim $p]}
+proc DEBUG {s} {lappend ::run_test_script -debug $s}
 
 # SQL --
 #
@@ -176,7 +179,7 @@ proc SQL  {a1 {a2 ""}} {
 #     argument is either 1 or 0, the expected value of the auto-commit flag.
 #
 proc TEST_AUTOCOMMIT {id a} {
-    TEST $id "do_test \$testid { sqlite3_get_autocommit $::DB } {$a}"
+    TEST $id "do_test \$testid { sqlite3_get_autocommit \$::DB } {$a}"
 }
 
 #--------------------------------------------------------------------------
@@ -194,7 +197,7 @@ TEST 1 {
   } {}
 }
 SQL { 
-  CREATE TABLE abc(a, b, c); 
+  CREATE TABLE IF NOT EXISTS abc(a, b, c); 
 }
 TEST 2 {
   do_test $testid.1 {
@@ -202,7 +205,7 @@ TEST 2 {
   } {abc}
 }
 
-# Insert a couple of rows into the table. each insert is in it's own
+# Insert a couple of rows into the table. each insert is in its own
 # transaction. test that the table is unpopulated before running the inserts
 # (and hence after each failure of the first insert), and that it has been
 # populated correctly after the final insert succeeds.
@@ -255,7 +258,7 @@ TEST 5 {
 set sql {
   BEGIN;DELETE FROM abc;
 }
-for {set i 1} {$i < 100} {incr i} {
+for {set i 1} {$i < 15} {incr i} {
   set a $i
   set b "String value $i"
   set c [string repeat X $i]
@@ -461,25 +464,27 @@ TEST 29 {
 # Test a simple multi-file transaction 
 #
 file delete -force test2.db
-SQL {ATTACH 'test2.db' AS aux;}
-SQL {BEGIN}
-SQL {CREATE TABLE aux.tbl2(x, y, z)}
-SQL {INSERT INTO tbl2 VALUES(1, 2, 3)}
-SQL {INSERT INTO def VALUES(4, 5, 6)}
-TEST 30 {
-  do_test $testid {
-    execsql {
-      SELECT * FROM tbl2, def WHERE d = x;
-    }
-  } {1 2 3 1 2 3}
-}
-SQL {COMMIT}
-TEST 31 {
-  do_test $testid {
-    execsql {
-      SELECT * FROM tbl2, def WHERE d = x;
-    }
-  } {1 2 3 1 2 3}
+ifcapable attach {
+  SQL {ATTACH 'test2.db' AS aux;}
+  SQL {BEGIN}
+  SQL {CREATE TABLE aux.tbl2(x, y, z)}
+  SQL {INSERT INTO tbl2 VALUES(1, 2, 3)}
+  SQL {INSERT INTO def VALUES(4, 5, 6)}
+  TEST 30 {
+    do_test $testid {
+      execsql {
+        SELECT * FROM tbl2, def WHERE d = x;
+      }
+    } {1 2 3 1 2 3}
+  }
+  SQL {COMMIT}
+  TEST 31 {
+    do_test $testid {
+      execsql {
+        SELECT * FROM tbl2, def WHERE d = x;
+      }
+    } {1 2 3 1 2 3}
+  }
 }
 
 # Test what happens when a malloc() fails while there are other active
@@ -518,7 +523,7 @@ SQL COMMIT
 # End of test program declaration
 #--------------------------------------------------------------------------
 
-proc run_test {arglist {pcstart 0} {iFailStart 1}} {
+proc run_test {arglist iRepeat {pcstart 0} {iFailStart 1}} {
   if {[llength $arglist] %2} {
     error "Uneven number of arguments to TEST"
   }
@@ -542,16 +547,14 @@ proc run_test {arglist {pcstart 0} {iFailStart 1}} {
   while {$pc*2 < [llength $arglist]} {
 
     # Id of this iteration:
-    set iterid "(pc $pc).(iFail $iFail)"
     set k [lindex $arglist [expr 2 * $pc]]
+    set iterid "pc=$pc.iFail=$iFail$k"
     set v [lindex $arglist [expr 2 * $pc + 1]]
 
     switch -- $k {
 
       -test { 
         foreach {id script} $v {}
-        set testid "malloc3-(test $id).$iterid"
-        eval $script
         incr pc
       }
 
@@ -559,26 +562,27 @@ proc run_test {arglist {pcstart 0} {iFailStart 1}} {
         set ::rollback_hook_count 0
 
         set ac [sqlite3_get_autocommit $::DB]        ;# Auto-Commit
-        sqlite_malloc_fail $iFail
+        sqlite3_memdebug_fail $iFail -repeat 0
         set rc [catch {db eval [lindex $v 1]} msg]   ;# True error occurs
         set nac [sqlite3_get_autocommit $::DB]       ;# New Auto-Commit 
-
 
         if {$rc != 0 && $nac && !$ac} {
           # Before [db eval] the auto-commit flag was clear. Now it
           # is set. Since an error occured we assume this was not a
-	  # commit - therefore a rollback occured. Check that the
-	  # rollback-hook was invoked.
+          # commit - therefore a rollback occured. Check that the
+          # rollback-hook was invoked.
           do_test malloc3-rollback_hook.$iterid {
             set ::rollback_hook_count
           } {1}
         }
 
+        set nFail [sqlite3_memdebug_fail -1 -benigncnt nBenign]
         if {$rc == 0} {
-            # Successful execution of sql. Our "mallocs-until-failure" 
-            # count should be greater than 0. Otherwise a malloc() failed
-            # and the error was not reported.
-            if {[lindex [sqlite_malloc_stat] 2] <= 0} {
+            # Successful execution of sql. The number of failed malloc()
+            # calls should be equal to the number of benign failures.
+            # Otherwise a malloc() failed and the error was not reported.
+            # 
+            if {$nFail!=$nBenign} {
               error "Unreported malloc() failure"
             }
 
@@ -591,16 +595,16 @@ proc run_test {arglist {pcstart 0} {iFailStart 1}} {
 
             incr pc
             set iFail 1
-            sqlite_malloc_fail 0
             integrity_check "malloc3-(integrity).$iterid"
-        } elseif {[regexp {.*out of memory} $msg]} {
-            # Out of memory error, as expected
+        } elseif {[regexp {.*out of memory} $msg] || [db errorcode] == 3082} {
+            # Out of memory error, as expected.
+            #
             integrity_check "malloc3-(integrity).$iterid"
             incr iFail
             if {$nac && !$ac} {
 
-              if {![lindex $v 0]} {
-                error "Statement \"[lindex $v 1]\" caused a rollback"
+              if {![lindex $v 0] && [db errorcode] != 3082} {
+                # error "Statement \"[lindex $v 1]\" caused a rollback"
               }
 
               for {set i $begin_pc} {$i < $pc} {incr i} {
@@ -628,19 +632,33 @@ proc run_test {arglist {pcstart 0} {iFailStart 1}} {
         incr pc
       }
 
+      -debug {
+        eval $v
+        incr pc
+      }
+
       default { error "Unknown switch: $k" }
     }
   }
 }
 
-# Turn of the Tcl interface's prepared statement caching facility.
+# Turn of the Tcl interface's prepared statement caching facility. Then
+# run the tests with "persistent" malloc failures.
+sqlite3_extended_result_codes db 1
 db cache size 0
+run_test $::run_test_script 1
 
-run_test $::run_test_script 9 1
-# run_test [lrange $::run_test_script 0 3] 0 63
-sqlite_malloc_fail 0
+# Close and reopen the db.
 db close
+file delete -force test.db test.db-journal test2.db test2.db-journal
+sqlite3 db test.db
+sqlite3_extended_result_codes db 1
+set ::DB [sqlite3_connection_pointer db]
 
-pp_check_for_leaks
+# Turn of the Tcl interface's prepared statement caching facility in
+# the new connnection. Then run the tests with "transient" malloc failures.
+db cache size 0
+run_test $::run_test_script 0
 
+sqlite3_memdebug_fail -1
 finish_test

@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this script is database locks between competing processes.
 #
-# $Id: lock2.test,v 1.7 2007/04/09 11:20:54 danielk1977 Exp $
+# $Id: lock2.test,v 1.10 2009/02/05 16:31:46 drh Exp $
 
 
 set testdir [file dirname $argv0]
@@ -49,7 +49,7 @@ proc testfixture {chan cmd} {
 # Write the main loop for the child testfixture processes into file
 # tf_main.tcl. The parent (this script) interacts with the child processes
 # via a two way pipe. The parent writes a script to the stdin of the child
-# process, followed by the word "OVER" on a line of it's own. The child
+# process, followed by the word "OVER" on a line of its own. The child
 # process evaluates the script and writes the results to stdout, followed
 # by an "OVER" of its own.
 set f [open tf_main.tcl w]
@@ -92,7 +92,7 @@ close $f
 #
 do_test lock2-1.1 {
   set ::tf1 [launch_testfixture]
-  testfixture $::tf1 "set sqlite_pending_byte $::sqlite_pending_byte"
+  testfixture $::tf1 "sqlite3_test_control_pending_byte $::sqlite_pending_byte"
   testfixture $::tf1 {
     sqlite3 db test.db -key xyzzy
     db eval {select * from sqlite_master}
@@ -101,6 +101,7 @@ do_test lock2-1.1 {
 do_test lock2-1.1.1 {
   execsql {pragma lock_status}
 } {main unlocked temp closed}
+sqlite3_soft_heap_limit 0
 do_test lock2-1.2 {
   execsql {
     BEGIN;
@@ -163,5 +164,6 @@ do_test lock2-1.10 {
 
 catch {testfixture $::tf1 {db close}}
 catch {close $::tf1}
+sqlite3_soft_heap_limit $soft_limit
 
 finish_test

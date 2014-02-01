@@ -11,12 +11,11 @@
 *************************************************************************
 ** Code for testing the the SQLite library in a multithreaded environment.
 **
-** $Id: test4.c,v 1.17 2006/02/23 21:43:56 drh Exp $
+** $Id: test4.c,v 1.24 2008/10/12 00:27:54 shane Exp $
 */
 #include "sqliteInt.h"
 #include "tcl.h"
-#include "os.h"
-#if defined(OS_UNIX) && OS_UNIX==1 && defined(THREADSAFE) && THREADSAFE==1
+#if defined(SQLITE_OS_UNIX) && OS_UNIX==1 && SQLITE_THREADSAFE
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -97,7 +96,9 @@ static void *thread_main(void *pArg){
     p->zErr = 0;
   }
   p->completed++;
+#ifndef SQLITE_OMIT_DEPRECATED
   sqlite3_thread_cleanup();
+#endif
   return 0;
 }
 
@@ -142,14 +143,14 @@ static int tcl_thread_create(
     return TCL_ERROR;
   }
   threadset[i].busy = 1;
-  sqliteFree(threadset[i].zFilename);
-  threadset[i].zFilename = sqliteStrDup(argv[2]);
+  sqlite3_free(threadset[i].zFilename);
+  threadset[i].zFilename = sqlite3DbStrDup(0, argv[2]);
   threadset[i].opnum = 1;
   threadset[i].completed = 0;
   rc = pthread_create(&x, 0, thread_main, &threadset[i]);
   if( rc ){
     Tcl_AppendResult(interp, "failed to create the thread", 0);
-    sqliteFree(threadset[i].zFilename);
+    sqlite3_free(threadset[i].zFilename);
     threadset[i].busy = 0;
     return TCL_ERROR;
   }
@@ -200,9 +201,9 @@ static void stop_thread(Thread *p){
   p->xOp = 0;
   p->opnum++;
   thread_wait(p);
-  sqliteFree(p->zArg);
+  sqlite3_free(p->zArg);
   p->zArg = 0;
-  sqliteFree(p->zFilename);
+  sqlite3_free(p->zFilename);
   p->zFilename = 0;
   p->busy = 0;
 }
@@ -476,8 +477,8 @@ static int tcl_thread_compile(
   }
   thread_wait(&threadset[i]);
   threadset[i].xOp = do_compile;
-  sqliteFree(threadset[i].zArg);
-  threadset[i].zArg = sqliteStrDup(argv[2]);
+  sqlite3_free(threadset[i].zArg);
+  threadset[i].zArg = sqlite3DbStrDup(0, argv[2]);
   threadset[i].opnum++;
   return TCL_OK;
 }
@@ -571,7 +572,7 @@ static int tcl_thread_finalize(
   }
   thread_wait(&threadset[i]);
   threadset[i].xOp = do_finalize;
-  sqliteFree(threadset[i].zArg);
+  sqlite3_free(threadset[i].zArg);
   threadset[i].zArg = 0;
   threadset[i].opnum++;
   return TCL_OK;
@@ -714,4 +715,4 @@ int Sqlitetest4_Init(Tcl_Interp *interp){
 }
 #else
 int Sqlitetest4_Init(Tcl_Interp *interp){ return TCL_OK; }
-#endif /* OS_UNIX */
+#endif /* SQLITE_OS_UNIX */

@@ -11,11 +11,12 @@
 *************************************************************************
 ** Test extension for testing the sqlite3_auto_extension() function.
 **
-** $Id: test_autoext.c,v 1.2 2006/12/19 18:57:11 drh Exp $
+** $Id: test_autoext.c,v 1.5 2008/07/08 02:12:37 drh Exp $
 */
 #include "tcl.h"
-#ifndef SQLITE_OMIT_LOAD_EXTENSION
 #include "sqlite3ext.h"
+
+#ifndef SQLITE_OMIT_LOAD_EXTENSION
 static SQLITE_EXTENSION_INIT1
 
 /*
@@ -94,7 +95,8 @@ static int autoExtSqrObjCmd(
   int objc,
   Tcl_Obj *CONST objv[]
 ){
-  sqlite3_auto_extension((void*)sqr_init);
+  int rc = sqlite3_auto_extension((void*)sqr_init);
+  Tcl_SetObjResult(interp, Tcl_NewIntObj(rc));
   return SQLITE_OK;
 }
 
@@ -109,7 +111,8 @@ static int autoExtCubeObjCmd(
   int objc,
   Tcl_Obj *CONST objv[]
 ){
-  sqlite3_auto_extension((void*)cube_init);
+  int rc = sqlite3_auto_extension((void*)cube_init);
+  Tcl_SetObjResult(interp, Tcl_NewIntObj(rc));
   return SQLITE_OK;
 }
 
@@ -124,9 +127,13 @@ static int autoExtBrokenObjCmd(
   int objc,
   Tcl_Obj *CONST objv[]
 ){
-  sqlite3_auto_extension((void*)broken_init);
+  int rc = sqlite3_auto_extension((void*)broken_init);
+  Tcl_SetObjResult(interp, Tcl_NewIntObj(rc));
   return SQLITE_OK;
 }
+
+#endif /* SQLITE_OMIT_LOAD_EXTENSION */
+
 
 /*
 ** tclcmd:   sqlite3_reset_auto_extension
@@ -144,8 +151,6 @@ static int resetAutoExtObjCmd(
 }
 
 
-#endif /* SQLITE_OMIT_LOAD_EXTENSION */
-
 /*
 ** This procedure registers the TCL procs defined in this file.
 */
@@ -157,8 +162,8 @@ int Sqlitetest_autoext_Init(Tcl_Interp *interp){
           autoExtCubeObjCmd, 0, 0);
   Tcl_CreateObjCommand(interp, "sqlite3_auto_extension_broken",
           autoExtBrokenObjCmd, 0, 0);
+#endif
   Tcl_CreateObjCommand(interp, "sqlite3_reset_auto_extension",
           resetAutoExtObjCmd, 0, 0);
-#endif
   return TCL_OK;
 }

@@ -1,0 +1,18 @@
+
+SQLite proxy file locking (Apple Internal Notes)
+
+--
+
+For testing purposes, a compile-time switch (-DSQLITE_PREFER_PROXY_LOCKING) enables proxy locking for all database files accessed via network file systems.  With this compile-time setting, automatic proxy locking can be forced on or off for all files regardless of file system by setting the environment variable SQLITE_FORCE_PROXY_LOCKING=0 (or 1)
+
+This is a temporary arrangement and we will not ship sqlite in that configuration.  Clients will be required to manually set up proxy locking via one of the following:
+
+
+Known issus
+-----------
+
+<rdar://problem/6295206> Handle read-only parent directories, databases and file systems with proxy locking
+<rdar://problem/3803883> Support for breaking side locks
+<rdar://problem/6266442> Improve side-locking conch file semantics
+
+

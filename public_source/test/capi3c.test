@@ -13,7 +13,7 @@
 # This is a copy of the capi3.test file that has been adapted to
 # test the new sqlite3_prepare_v2 interface.
 #
-# $Id: capi3c.test,v 1.7 2007/03/30 20:46:14 drh Exp $
+# $Id: capi3c.test,v 1.22 2008/11/05 16:37:35 drh Exp $
 #
 
 set testdir [file dirname $argv0]
@@ -63,8 +63,11 @@ do_test capi3c-1.1 {
   sqlite3_finalize $STMT
   set TAIL
 } {}
-do_test capi3c-1.2 {
+do_test capi3c-1.2.1 {
   sqlite3_errcode $DB
+} {SQLITE_OK}
+do_test capi3c-1.2.2 {
+  sqlite3_extended_errcode $DB
 } {SQLITE_OK}
 do_test capi3c-1.3 {
   sqlite3_errmsg $DB
@@ -81,12 +84,16 @@ do_test capi3c-1.5 {
     set STMT [sqlite3_prepare_v2 $DB $sql -1 TAIL]
   }
 } {1}
-do_test capi3c-1.6 {
+do_test capi3c-1.6.1 {
   sqlite3_errcode $DB
+} {SQLITE_ERROR}
+do_test capi3c-1.6.2 {
+  sqlite3_extended_errcode $DB
 } {SQLITE_ERROR}
 do_test capi3c-1.7 {
   sqlite3_errmsg $DB
 } {no such column: namex}
+
 
 ifcapable {utf16} {
   do_test capi3c-2.1 {
@@ -107,8 +114,11 @@ ifcapable {utf16} {
       set STMT [sqlite3_prepare16_v2  $DB $sql -1 TAIL]
     }
   } {1}
-  do_test capi3c-2.4 {
+  do_test capi3c-2.4.1 {
     sqlite3_errcode $DB
+  } {SQLITE_ERROR}
+  do_test capi3c-2.4.2 {
+    sqlite3_extended_errcode $DB
   } {SQLITE_ERROR}
   do_test capi3c-2.5 {
     sqlite3_errmsg $DB
@@ -594,10 +604,8 @@ set ::ENC [execsql {pragma encoding}]
 db close
 
 do_test capi3c-6.0 {
-btree_breakpoint
   sqlite3 db test.db
   set DB [sqlite3_connection_pointer db]
-btree_breakpoint
   sqlite3_key $DB xyzzy
   set sql {SELECT a FROM t1 order by rowid}
   set STMT [sqlite3_prepare_v2 $DB $sql -1 TAIL]
@@ -622,17 +630,27 @@ do_test capi3c-6.99-misuse {
   db close
 } {}
 
+# This procedure sets the value of the file-format in file 'test.db'
+# to $newval. Also, the schema cookie is incremented.
+# 
+proc set_file_format {newval} {
+  hexio_write test.db 44 [hexio_render_int32 $newval]
+  set schemacookie [hexio_get_int [hexio_read test.db 40 4]]
+  incr schemacookie
+  hexio_write test.db 40 [hexio_render_int32 $schemacookie]
+  return {}
+}
+
+# This procedure returns the value of the file-format in file 'test.db'.
+# 
+proc get_file_format {{fname test.db}} {
+  return [hexio_get_int [hexio_read $fname 44 4]]
+}
+
 if {![sqlite3 -has-codec]} {
   # Test what happens when the library encounters a newer file format.
-  # Do this by updating the file format via the btree layer.
   do_test capi3c-7.1 {
-    set ::bt [btree_open test.db 10 0]
-    btree_begin_transaction $::bt
-    set meta [btree_get_meta $::bt]
-    lset meta 2 5
-    eval [concat btree_update_meta $::bt [lrange $meta 0 end]]
-    btree_commit $::bt
-    btree_close $::bt
+    set_file_format 5
   } {}
   do_test capi3c-7.2 {
     sqlite3 db test.db
@@ -647,8 +665,7 @@ if {![sqlite3 -has-codec]} {
   # Now test that the library correctly handles bogus entries in the
   # sqlite_master table (schema corruption).
   do_test capi3c-8.1 {
-    file delete -force test.db
-    file delete -force test.db-journal
+    file delete -force test.db test.db-journal
     sqlite3 db test.db
     execsql {
       CREATE TABLE t1(a);
@@ -656,54 +673,38 @@ if {![sqlite3 -has-codec]} {
     db close
   } {}
   do_test capi3c-8.2 {
-    set ::bt [btree_open test.db 10 0]
-    btree_begin_transaction $::bt
-    set ::bc [btree_cursor $::bt 1 1]
-
-    # Build a 5-field row record consisting of 5 null records. This is
-    # officially black magic.
-    catch {unset data}
-    set data [binary format c6 {6 0 0 0 0 0}]
-    btree_insert $::bc 5 $data
-
-    btree_close_cursor $::bc
-    btree_commit $::bt
-    btree_close $::bt
+    sqlite3 db test.db
+    execsql {
+      PRAGMA writable_schema=ON;
+      INSERT INTO sqlite_master VALUES(NULL,NULL,NULL,NULL,NULL);
+    }
+    db close
   } {}
   do_test capi3c-8.3 {
     sqlite3 db test.db
     catchsql {
       SELECT * FROM sqlite_master;
     }
-  } {1 {malformed database schema}}
+  } {1 {malformed database schema (?)}}
   do_test capi3c-8.4 {
-    set ::bt [btree_open test.db 10 0]
-    btree_begin_transaction $::bt
-    set ::bc [btree_cursor $::bt 1 1]
-  
     # Build a 5-field row record. The first field is a string 'table', and
-    # subsequent fields are all NULL. Replace the other broken record with
-    # this one and try to read the schema again. The broken record uses
-    # either UTF-8 or native UTF-16 (if this file is being run by
-    # utf16.test).
-    if { [string match UTF-16* $::ENC] } {
-      set data [binary format c6a10 {6 33 0 0 0 0} [utf16 table]]
-    } else {
-      set data [binary format c6a5 {6 23 0 0 0 0} table]
+    # subsequent fields are all NULL.
+    db close
+    file delete -force test.db test.db-journal
+    sqlite3 db test.db
+    execsql {
+      CREATE TABLE t1(a);
+      PRAGMA writable_schema=ON;
+      INSERT INTO sqlite_master VALUES('table',NULL,NULL,NULL,NULL);
     }
-    btree_insert $::bc 5 $data
-  
-    btree_close_cursor $::bc
-    btree_commit $::bt
-    btree_close $::bt
+    db close
   } {};
   do_test capi3c-8.5 {
-    db close 
     sqlite3 db test.db
     catchsql {
       SELECT * FROM sqlite_master;
     }
-  } {1 {malformed database schema}}
+  } {1 {malformed database schema (?)}}
   db close
 }
 file delete -force test.db
@@ -730,7 +731,7 @@ SQLITE_SCHEMA     {database schema has changed} \
 SQLITE_CONSTRAINT {constraint failed} \
 SQLITE_MISMATCH   {datatype mismatch} \
 SQLITE_MISUSE     {library routine called out of sequence} \
-SQLITE_NOLFS      {kernel lacks large file support} \
+SQLITE_NOLFS      {large file support is disabled} \
 SQLITE_AUTH       {authorization denied} \
 SQLITE_FORMAT     {auxiliary database format error} \
 SQLITE_RANGE      {bind or column index out of range} \
@@ -745,26 +746,25 @@ foreach {code english} $code2english {
 }
 
 # Test the error message when a "real" out of memory occurs.
-if {[info command sqlite_malloc_stat]!=""} {
-set sqlite_malloc_fail 1
-do_test capi3c-10-1 {
-  sqlite3 db test.db
-  set DB [sqlite3_connection_pointer db]
-  sqlite_malloc_fail 1
-  catchsql {
-    select * from sqlite_master;
-  }
-} {1 {out of memory}}
-do_test capi3c-10-2 {
-  sqlite3_errmsg $::DB
-} {out of memory}
-ifcapable {utf16} {
-  do_test capi3c-10-3 {
-    utf8 [sqlite3_errmsg16 $::DB]
+ifcapable memdebug {
+  do_test capi3c-10-1 {
+    sqlite3 db test.db
+    set DB [sqlite3_connection_pointer db]
+    sqlite3_memdebug_fail 0
+    catchsql {
+      select * from sqlite_master;
+    }
+  } {1 {out of memory}}
+  do_test capi3c-10-2 {
+    sqlite3_errmsg $::DB
   } {out of memory}
-}
-db close
-sqlite_malloc_fail 0
+  ifcapable {utf16} {
+    do_test capi3c-10-3 {
+      utf8 [sqlite3_errmsg16 $::DB]
+    } {out of memory}
+  }
+  db close
+  sqlite3_memdebug_fail -1
 }
 
 # The following tests - capi3c-11.* - test that a COMMIT or ROLLBACK
@@ -788,14 +788,25 @@ do_test capi3c-11.2 {
   set STMT [sqlite3_prepare_v2 $DB "SELECT func(b, a) FROM t1" -1 TAIL]
   sqlite3_step $STMT
 } {SQLITE_ROW}
-do_test capi3c-11.3 {
+
+# As of 3.6.5 a COMMIT is OK during while a query is still running -
+# as long as it is a read-only query and not an incremental BLOB write.
+#
+do_test capi3-11.3.1 {
   catchsql {
     COMMIT;
   }
-} {1 {cannot commit transaction - SQL statements in progress}}
-do_test capi3c-11.3.1 {
+} {0 {}}
+do_test capi3-11.3.2 {
+  sqlite3_extended_errcode $DB
+} {SQLITE_OK}
+do_test capi3-11.3.3 {
   sqlite3_get_autocommit $DB
-} 0
+} 1
+do_test capi3-11.3.4 {
+  db eval {PRAGMA lock_status}
+} {main shared temp closed}
+
 do_test capi3c-11.4 {
   sqlite3_step $STMT
 } {SQLITE_ERROR}
@@ -807,15 +818,7 @@ do_test capi3c-11.6 {
     SELECT * FROM t1;
   }
 } {0 {1 int 2 notatype}}
-do_test capi3c-11.6.1 {
-  sqlite3_get_autocommit $DB
-} 0
 do_test capi3c-11.7 {
-  catchsql {
-    COMMIT;
-  }
-} {0 {}}
-do_test capi3c-11.7.1 {
   sqlite3_get_autocommit $DB
 } 1
 do_test capi3c-11.8 {
@@ -902,19 +905,19 @@ do_test capi3c-11.20 {
     BEGIN;
     COMMIT;
   }
-} {1 {cannot commit transaction - SQL statements in progress}}
+} {0 {}}
 do_test capi3c-11.20 {
   sqlite3_reset $STMT
   catchsql {
     COMMIT;
   }
-} {0 {}}
+} {1 {cannot commit - no transaction is active}}
 do_test capi3c-11.21 {
   sqlite3_finalize $STMT
 } {SQLITE_OK}
 
-# The following tests - capi3c-12.* - check that it's Ok to start a
-# transaction while other VMs are active, and that it's Ok to execute
+# The following tests - capi3c-12.* - check that its Ok to start a
+# transaction while other VMs are active, and that its Ok to execute
 # atomic updates in the same situation 
 #
 do_test capi3c-12.1 {
@@ -1174,9 +1177,22 @@ do_test capi3c-19.4 {
   db eval {DROP TABLE t3}
   sqlite3_step $STMT
 } SQLITE_SCHEMA
-do_test capi3c-19.4.2 {
+do_test capi3c-19.4.1 {
   sqlite3_errmsg $DB
 } {no such table: t3}
+ifcapable deprecated {
+  do_test capi3c-19.4.2 {
+    sqlite3_expired $STMT
+  } 1
+}
+do_test capi3c-19.4.3 {
+  sqlite3_errmsg $DB
+} {no such table: t3}
+ifcapable deprecated {
+  do_test capi3c-19.4.4 {
+    sqlite3_expired 0
+  } 1
+}
 do_test capi3c-19.5 {
   sqlite3_reset $STMT
   db eval {
@@ -1185,6 +1201,11 @@ do_test capi3c-19.5 {
   }
   sqlite3_step $STMT
 } SQLITE_ROW
+ifcapable deprecated {
+  do_test capi3c-19.5.2 {
+    sqlite3_expired $STMT
+  } 0
+}
 do_test capi3c-19.6 {
   sqlite3_column_int $STMT 1
 } 2
@@ -1211,5 +1232,91 @@ do_test capi3c-20.4 {
   db2 close
   sqlite3_finalize $STMT
 } SQLITE_OK
+
+# Test that sqlite3_step() sets the database error code correctly.
+# See ticket #2497.
+#
+ifcapable progress {
+  do_test capi3c-21.1 {
+    set STMT [sqlite3_prepare_v2 $DB {SELECT * FROM t3} -1 TAIL]
+    db progress 5 "expr 1"
+    sqlite3_step $STMT
+  } {SQLITE_INTERRUPT}
+  do_test capi3c-21.2 {
+    sqlite3_extended_errcode $DB
+  } {SQLITE_INTERRUPT}
+  do_test capi3c-21.3 {
+    sqlite3_finalize $STMT
+  } {SQLITE_INTERRUPT}
+  do_test capi3c-21.4 {
+    set STMT [sqlite3_prepare $DB {SELECT * FROM t3} -1 TAIL]
+    db progress 5 "expr 1"
+    sqlite3_step $STMT
+  } {SQLITE_ERROR}
+  do_test capi3c-21.5 {
+    sqlite3_errcode $DB
+  } {SQLITE_ERROR}
+  do_test capi3c-21.6 {
+    sqlite3_finalize $STMT
+  } {SQLITE_INTERRUPT}
+  do_test capi3c-21.7 {
+    sqlite3_errcode $DB
+  } {SQLITE_INTERRUPT}
+  do_test capi3c-21.8 {
+    sqlite3_extended_errcode $DB
+  } {SQLITE_INTERRUPT}
+}
+
+# Make sure sqlite3_result_error_code() returns the correct error code.
+# See ticket #2940
+#
+do_test capi3c-22.1 {
+  db progress 0 {}
+  set STMT [sqlite3_prepare_v2 db {SELECT test_error('the message',3)} -1 TAIL]
+  sqlite3_step $STMT
+} {SQLITE_PERM}
+sqlite3_finalize $STMT
+do_test capi3c-22.2 {
+  set STMT [sqlite3_prepare_v2 db {SELECT test_error('the message',4)} -1 TAIL]
+  sqlite3_step $STMT
+} {SQLITE_ABORT}
+sqlite3_finalize $STMT
+do_test capi3c-22.3 {
+  set STMT [sqlite3_prepare_v2 db {SELECT test_error('the message',16)} -1 TAIL]
+  sqlite3_step $STMT
+} {SQLITE_EMPTY}
+sqlite3_finalize $STMT
+
+# For a multi-column result set where the same table column is repeated
+# in multiple columns of the output, verify that doing a UTF-8 to UTF-16
+# conversion (or vice versa) on one column does not change the value of
+# the second.
+#
+do_test capi3c-23.1 {
+  set STMT [sqlite3_prepare_v2 db {SELECT b,b,b,b FROM t1} -1 TAIL]
+  sqlite3_step $STMT
+} {SQLITE_ROW}
+do_test capi3c-23.2 {
+  sqlite3_column_text16 $STMT 0
+  sqlite3_column_text $STMT 1
+} {one}
+do_test capi3c-23.3 {
+  sqlite3_column_text16 $STMT 2
+  sqlite3_column_text $STMT 3
+} {one}
+sqlite3_finalize $STMT
+do_test capi3c-23.4 {
+  set STMT [sqlite3_prepare_v2 db {SELECT b||'x',b,b,b FROM t1} -1 TAIL]
+  sqlite3_step $STMT
+} {SQLITE_ROW}
+do_test capi3c-23.5 {
+  sqlite3_column_text16 $STMT 0
+  sqlite3_column_text $STMT 1
+} {one}
+do_test capi3c-23.6 {
+  sqlite3_column_text16 $STMT 2
+  sqlite3_column_text $STMT 3
+} {one}
+sqlite3_finalize $STMT
 
 finish_test

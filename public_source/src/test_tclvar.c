@@ -16,11 +16,10 @@
 ** The emphasis of this file is a virtual table that provides
 ** access to TCL variables.
 **
-** $Id: test_tclvar.c,v 1.10 2006/09/11 00:34:22 drh Exp $
+** $Id: test_tclvar.c,v 1.17 2008/08/12 14:48:41 danielk1977 Exp $
 */
 #include "sqliteInt.h"
 #include "tcl.h"
-#include "os.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,7 +57,7 @@ static int tclvarConnect(
   tclvar_vtab *pVtab;
   static const char zSchema[] = 
      "CREATE TABLE whatever(name TEXT, arrayname TEXT, value TEXT)";
-  pVtab = sqliteMalloc( sizeof(*pVtab) );
+  pVtab = sqlite3MallocZero( sizeof(*pVtab) );
   if( pVtab==0 ) return SQLITE_NOMEM;
   *ppVtab = &pVtab->base;
   pVtab->interp = (Tcl_Interp *)pAux;
@@ -69,7 +68,7 @@ static int tclvarConnect(
 ** methods are identical. */
 
 static int tclvarDisconnect(sqlite3_vtab *pVtab){
-  sqliteFree(pVtab);
+  sqlite3_free(pVtab);
   return SQLITE_OK;
 }
 /* The xDisconnect and xDestroy methods are also the same */
@@ -79,7 +78,7 @@ static int tclvarDisconnect(sqlite3_vtab *pVtab){
 */
 static int tclvarOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor){
   tclvar_cursor *pCur;
-  pCur = sqliteMalloc(sizeof(tclvar_cursor));
+  pCur = sqlite3MallocZero(sizeof(tclvar_cursor));
   *ppCursor = &pCur->base;
   return SQLITE_OK;
 }
@@ -95,7 +94,7 @@ static int tclvarClose(sqlite3_vtab_cursor *cur){
   if( pCur->pList2 ){
     Tcl_DecrRefCount(pCur->pList2);
   }
-  sqliteFree(pCur);
+  sqlite3_free(pCur);
   return SQLITE_OK;
 }
 
@@ -223,7 +222,8 @@ static int tclvarBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo){
 
   for(ii=0; ii<pIdxInfo->nConstraint; ii++){
     struct sqlite3_index_constraint const *pCons = &pIdxInfo->aConstraint[ii];
-    if( pCons->iColumn==0 && pCons->op==SQLITE_INDEX_CONSTRAINT_EQ ){
+    if( pCons->iColumn==0 && pCons->usable
+           && pCons->op==SQLITE_INDEX_CONSTRAINT_EQ ){
       struct sqlite3_index_constraint_usage *pUsage;
       pUsage = &pIdxInfo->aConstraintUsage[ii];
       pUsage->omit = 0;
@@ -234,7 +234,8 @@ static int tclvarBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo){
 
   for(ii=0; ii<pIdxInfo->nConstraint; ii++){
     struct sqlite3_index_constraint const *pCons = &pIdxInfo->aConstraint[ii];
-    if( pCons->iColumn==0 && pCons->op==SQLITE_INDEX_CONSTRAINT_MATCH ){
+    if( pCons->iColumn==0 && pCons->usable
+           && pCons->op==SQLITE_INDEX_CONSTRAINT_MATCH ){
       struct sqlite3_index_constraint_usage *pUsage;
       pUsage = &pIdxInfo->aConstraintUsage[ii];
       pUsage->omit = 1;
@@ -270,16 +271,13 @@ static sqlite3_module tclvarModule = {
   0,                           /* xCommit */
   0,                           /* xRollback */
   0,                           /* xFindMethod */
+  0,                           /* xRename */
 };
 
 /*
 ** Decode a pointer to an sqlite3 object.
 */
-static int getDbPointer(Tcl_Interp *interp, const char *zA, sqlite3 **ppDb){
-  *ppDb = (sqlite3*)sqlite3TextToPtr(zA);
-  return TCL_OK;
-}
-
+extern int getDbPointer(Tcl_Interp *interp, const char *zA, sqlite3 **ppDb);
 
 /*
 ** Register the echo virtual table module.
@@ -309,19 +307,19 @@ static int register_tclvar_module(
 ** Register commands with the TCL interpreter.
 */
 int Sqlitetesttclvar_Init(Tcl_Interp *interp){
+#ifndef SQLITE_OMIT_VIRTUALTABLE
   static struct {
      char *zName;
      Tcl_ObjCmdProc *xProc;
      void *clientData;
   } aObjCmd[] = {
-#ifndef SQLITE_OMIT_VIRTUALTABLE
      { "register_tclvar_module",   register_tclvar_module, 0 },
-#endif
   };
   int i;
   for(i=0; i<sizeof(aObjCmd)/sizeof(aObjCmd[0]); i++){
     Tcl_CreateObjCommand(interp, aObjCmd[i].zName, 
         aObjCmd[i].xProc, aObjCmd[i].clientData, 0);
   }
+#endif
   return TCL_OK;
 }

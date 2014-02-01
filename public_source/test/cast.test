@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this file is testing the CAST operator.
 #
-# $Id: cast.test,v 1.7 2007/05/17 16:34:45 danielk1977 Exp $
+# $Id: cast.test,v 1.10 2008/11/06 15:33:04 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -183,6 +183,38 @@ do_test cast-1.53 {
   execsql {SELECT CAST('123.5abc' AS integer)}
 } 123
 
+do_test case-1.60 {
+  execsql {SELECT CAST(null AS REAL)}
+} {{}}
+do_test case-1.61 {
+  execsql {SELECT typeof(CAST(null AS REAL))}
+} {null}
+do_test case-1.62 {
+  execsql {SELECT CAST(1 AS REAL)}
+} {1.0}
+do_test case-1.63 {
+  execsql {SELECT typeof(CAST(1 AS REAL))}
+} {real}
+do_test case-1.64 {
+  execsql {SELECT CAST('1' AS REAL)}
+} {1.0}
+do_test case-1.65 {
+  execsql {SELECT typeof(CAST('1' AS REAL))}
+} {real}
+do_test case-1.66 {
+  execsql {SELECT CAST('abc' AS REAL)}
+} {0.0}
+do_test case-1.67 {
+  execsql {SELECT typeof(CAST('abc' AS REAL))}
+} {real}
+do_test case-1.68 {
+  execsql {SELECT CAST(x'31' AS REAL)}
+} {1.0}
+do_test case-1.69 {
+  execsql {SELECT typeof(CAST(x'31' AS REAL))}
+} {real}
+
+
 # Ticket #1662.  Ignore leading spaces in numbers when casting.
 #
 do_test cast-2.1 {
@@ -229,9 +261,11 @@ do_test cast-3.12 {
 do_test cast-3.13 {
   execsql {SELECT CAST('9223372036854774800' AS real)}
 } 9.22337203685477e+18
-do_test cast-3.14 {
-  execsql {SELECT CAST(CAST('9223372036854774800' AS real) AS integer)}
-} 9223372036854774784
+ifcapable long_double {
+  do_test cast-3.14 {
+    execsql {SELECT CAST(CAST('9223372036854774800' AS real) AS integer)}
+  } 9223372036854774784
+}
 do_test cast-3.15 {
   execsql {SELECT CAST('-9223372036854774800' AS integer)}
 } -9223372036854774800
@@ -241,9 +275,11 @@ do_test cast-3.16 {
 do_test cast-3.17 {
   execsql {SELECT CAST('-9223372036854774800' AS real)}
 } -9.22337203685477e+18
-do_test cast-3.18 {
-  execsql {SELECT CAST(CAST('-9223372036854774800' AS real) AS integer)}
-} -9223372036854774784
+ifcapable long_double {
+  do_test cast-3.18 {
+    execsql {SELECT CAST(CAST('-9223372036854774800' AS real) AS integer)}
+  } -9223372036854774784
+}
 if {[db eval {PRAGMA encoding}]=="UTF-8"} {
   do_test cast-3.21 {
     execsql {SELECT CAST(x'39323233333732303336383534373734383030' AS integer)}
@@ -254,9 +290,14 @@ if {[db eval {PRAGMA encoding}]=="UTF-8"} {
   do_test cast-3.23 {
     execsql {SELECT CAST(x'39323233333732303336383534373734383030' AS real)}
   } 9.22337203685477e+18
-  do_test cast-3.24 {
-    execsql {SELECT CAST(CAST(x'39323233333732303336383534373734383030' AS real) AS integer)}
-  } 9223372036854774784
+  ifcapable long_double {
+    do_test cast-3.24 {
+      execsql {
+        SELECT CAST(CAST(x'39323233333732303336383534373734383030' AS real)
+                    AS integer)
+      }
+    } 9223372036854774784
+  }
 }
 do_test case-3.31 {
   execsql {SELECT CAST(NULL AS numeric)}
@@ -277,5 +318,29 @@ do_test cast-3.32.2 {
 do_test cast-3.32.3 {
   sqlite3_finalize $::STMT
 } {SQLITE_OK}
+
+
+do_test cast-4.1 {
+  db eval {
+    CREATE TABLE t1(a);
+    INSERT INTO t1 VALUES('abc');
+    SELECT a, CAST(a AS integer) FROM t1;
+  }
+} {abc 0}
+do_test cast-4.2 {
+  db eval {
+    SELECT CAST(a AS integer), a FROM t1;
+  }
+} {0 abc}
+do_test cast-4.3 {
+  db eval {
+    SELECT a, CAST(a AS integer), a FROM t1;
+  }
+} {abc 0 abc}
+do_test cast-4.4 {
+  db eval {
+    SELECT CAST(a AS integer), a, CAST(a AS real), a FROM t1;
+  }
+} {0 abc 0.0 abc}
 
 finish_test

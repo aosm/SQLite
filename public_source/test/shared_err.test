@@ -13,114 +13,22 @@
 # cache context. What happens to connection B if one connection A encounters
 # an IO-error whilst reading or writing the file-system?
 #
-# $Id: shared_err.test,v 1.11 2007/04/06 01:04:40 drh Exp $
+# $Id: shared_err.test,v 1.24 2008/10/12 00:27:54 shane Exp $
 
 proc skip {args} {}
 
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
+source $testdir/malloc_common.tcl
 db close
 
 ifcapable !shared_cache||!subquery {
   finish_test
   return
 }
+
 set ::enable_shared_cache [sqlite3_enable_shared_cache 1]
-
-# Todo: This is a copy of the [do_malloc_test] proc in malloc.test
-# It would be better if these were consolidated.
-
-# Usage: do_malloc_test <test number> <options...>
-#
-# The first argument, <test number>, is an integer used to name the
-# tests executed by this proc. Options are as follows:
-#
-#     -tclprep          TCL script to run to prepare test.
-#     -sqlprep          SQL script to run to prepare test.
-#     -tclbody          TCL script to run with malloc failure simulation.
-#     -sqlbody          TCL script to run with malloc failure simulation.
-#     -cleanup          TCL script to run after the test.
-#
-# This command runs a series of tests to verify SQLite's ability
-# to handle an out-of-memory condition gracefully. It is assumed
-# that if this condition occurs a malloc() call will return a
-# NULL pointer. Linux, for example, doesn't do that by default. See
-# the "BUGS" section of malloc(3).
-#
-# Each iteration of a loop, the TCL commands in any argument passed
-# to the -tclbody switch, followed by the SQL commands in any argument
-# passed to the -sqlbody switch are executed. Each iteration the
-# Nth call to sqliteMalloc() is made to fail, where N is increased
-# each time the loop runs starting from 1. When all commands execute
-# successfully, the loop ends.
-#
-proc do_malloc_test {tn args} {
-  array unset ::mallocopts 
-  array set ::mallocopts $args
-
-  set ::go 1
-  for {set ::n 1} {$::go && $::n < 50000} {incr ::n} {
-    do_test shared_malloc-$tn.$::n {
-
-      # Remove all traces of database files test.db and test2.db from the files
-      # system. Then open (empty database) "test.db" with the handle [db].
-      # 
-      sqlite_malloc_fail 0
-      catch {db close} 
-      catch {file delete -force test.db}
-      catch {file delete -force test.db-journal}
-      catch {file delete -force test2.db}
-      catch {file delete -force test2.db-journal}
-      catch {sqlite3 db test.db} 
-      set ::DB [sqlite3_connection_pointer db]
-
-      # Execute any -tclprep and -sqlprep scripts.
-      #
-      if {[info exists ::mallocopts(-tclprep)]} {
-        eval $::mallocopts(-tclprep)
-      }
-      if {[info exists ::mallocopts(-sqlprep)]} {
-        execsql $::mallocopts(-sqlprep)
-      }
-
-      # Now set the ${::n}th malloc() to fail and execute the -tclbody and
-      # -sqlbody scripts.
-      #
-      sqlite_malloc_fail $::n
-      set ::mallocbody {}
-      if {[info exists ::mallocopts(-tclbody)]} {
-        append ::mallocbody "$::mallocopts(-tclbody)\n"
-      }
-      if {[info exists ::mallocopts(-sqlbody)]} {
-        append ::mallocbody "db eval {$::mallocopts(-sqlbody)}"
-      }
-      set v [catch $::mallocbody msg]
-
-      set leftover [lindex [sqlite_malloc_stat] 2]
-      if {$leftover>0} {
-        if {$leftover>1} {puts "\nLeftover: $leftover\nReturn=$v  Message=$msg"}
-        set ::go 0
-        if {$v} {
-          puts "\nError message returned: $msg"
-        } else {
-          set v {1 1}
-        }
-      } else {
-        set v2 [expr {$msg=="" || $msg=="out of memory"}]
-        if {!$v2} {puts "\nError message returned: $msg"}
-        lappend v $v2
-      }
-    } {1 1}
-
-    sqlite_malloc_fail 0
-    if {[info exists ::mallocopts(-cleanup)]} {
-      catch [list uplevel #0 $::mallocopts(-cleanup)] msg
-    }
-  }
-  unset ::mallocopts
-}
-
 
 do_ioerr_test shared_ioerr-1 -tclprep {
   sqlite3 db2 test.db
@@ -149,12 +57,13 @@ do_ioerr_test shared_ioerr-1 -tclprep {
     set res [catchsql {
       SELECT * FROM t1;
     } db2]
-    set possible_results [list            \
-      "1 {disk I/O error}"                \
-      "0 {1 2 3}"                         \
-      "0 {1 2 3 1 2 3 4 5 6}"             \
-      "0 {1 2 3 1 2 3 4 5 6 1 2 3 4 5 6}" \
-      "0 {}"                              \
+    set possible_results [list               \
+      "1 {disk I/O error}"                   \
+      "0 {1 2 3}"                            \
+      "0 {1 2 3 1 2 3 4 5 6}"                \
+      "0 {1 2 3 1 2 3 4 5 6 1 2 3 4 5 6}"    \
+      "0 {}"                                 \
+      "1 {database disk image is malformed}" \
     ]
     set rc [expr [lsearch -exact $possible_results $res] >= 0]
     if {$rc != 1} {
@@ -163,7 +72,15 @@ do_ioerr_test shared_ioerr-1 -tclprep {
     }
     set rc
   } {1}
+
+  # The "database disk image is malformed" is a special case that can
+  # occur if an IO error occurs during a rollback in the {SELECT * FROM t1}
+  # statement above. This test is to make sure there is no real database
+  # corruption.
   db2 close
+  do_test shared_ioerr-1.$n.cleanup.2 {
+    execsql {pragma integrity_check} db
+  } {ok}
 }
 
 do_ioerr_test shared_ioerr-2 -tclprep {
@@ -204,6 +121,7 @@ do_ioerr_test shared_ioerr-2 -tclprep {
 
   incr ::residx
 } -cleanup {
+  catchsql ROLLBACK
   do_test shared_ioerr-2.$n.cleanup.1 {
     set res [catchsql {
       SELECT max(a), min(a), count(*) FROM (SELECT a FROM t1 order by a);
@@ -294,7 +212,7 @@ do_ioerr_test shared_ioerr-3 -tclprep {
     expr {
       ($::steprc eq "SQLITE_ROW" && $::finalrc eq "SQLITE_OK") ||
       ($::steprc eq "SQLITE_ERROR" && $::finalrc eq "SQLITE_IOERR") ||
-      ($::steprc eq "SQLITE_ABORT" && $::finalrc eq "SQLITE_OK")
+      ($::steprc eq "SQLITE_ERROR" && $::finalrc eq "SQLITE_ABORT")
     }
   } {1}
 
@@ -374,22 +292,12 @@ do_ioerr_test shared_ioerr-3rev -tclprep {
     expr {
       ($::steprc eq "SQLITE_ROW" && $::finalrc eq "SQLITE_OK") ||
       ($::steprc eq "SQLITE_ERROR" && $::finalrc eq "SQLITE_IOERR") ||
-      ($::steprc eq "SQLITE_ABORT" && $::finalrc eq "SQLITE_OK")
+      ($::steprc eq "SQLITE_ERROR" && $::finalrc eq "SQLITE_ABORT")
     }
   } {1}
 
 # db2 eval {select * from sqlite_master}
   db2 close
-}
-
-# Only run these tests if memory debugging is turned on.
-#
-if {[info command sqlite_malloc_stat]==""} {
-   puts "Skipping malloc tests: not compiled with -DSQLITE_MEMDEBUG..."
-   db close
-   sqlite3_enable_shared_cache $::enable_shared_cache
-   finish_test
-   return
 }
 
 # Provoke a malloc() failure when a cursor position is being saved. This
@@ -401,7 +309,7 @@ if {[info command sqlite_malloc_stat]==""} {
 # owns the cursor (the one for which the position is not saved) should
 # continue unaffected.
 # 
-do_malloc_test 4 -tclprep {
+do_malloc_test shared_err-4 -tclprep {
   sqlite3 db2 test.db
   execsql {
     PRAGMA read_uncommitted = 1;
@@ -425,7 +333,7 @@ do_malloc_test 4 -tclprep {
 } -cleanup {
   do_test shared_malloc-4.$::n.cleanup.1 {
     set ::rc [sqlite3_step $::STMT]
-    expr {$::rc=="SQLITE_ROW" || $::rc=="SQLITE_ABORT"}
+    expr {$::rc=="SQLITE_ROW" || $::rc=="SQLITE_ERROR"}
   } {1}
   if {$::rc=="SQLITE_ROW"} {
     do_test shared_malloc-4.$::n.cleanup.2 {
@@ -433,13 +341,16 @@ do_malloc_test 4 -tclprep {
     } {2222222222}
   }
   do_test shared_malloc-4.$::n.cleanup.3 {
-    sqlite3_finalize $::STMT
-  } {SQLITE_OK}
+   set rc [sqlite3_finalize $::STMT]
+   expr {$rc=="SQLITE_OK" || $rc=="SQLITE_ABORT" ||
+         $rc=="SQLITE_NOMEM" || $rc=="SQLITE_IOERR"}
+  } {1}
 # db2 eval {select * from sqlite_master}
   db2 close
 }
 
-do_malloc_test 5 -tclbody {
+do_malloc_test shared_err-5 -tclbody {
+  db close
   sqlite3 dbX test.db
   sqlite3 dbY test.db
   dbX close
@@ -449,21 +360,25 @@ do_malloc_test 5 -tclbody {
   catch {dbY close}
 }
 
-do_malloc_test 6 -tclbody {
+do_malloc_test shared_err-6 -tclbody {
   catch {db close}
-  sqlite3_thread_cleanup
+  ifcapable deprecated {
+    sqlite3_thread_cleanup
+  }
   sqlite3_enable_shared_cache 0
 } -cleanup {
   sqlite3_enable_shared_cache 1
 }
 
-do_test shared_misuse-7.1 {
-  sqlite3 db test.db
-  catch {
-    sqlite3_enable_shared_cache 0
-  } msg
-  set msg
-} {library routine called out of sequence}
+# As of 3.5.0, sqlite3_enable_shared_cache can be called at
+# any time and from any thread
+#do_test shared_err-misuse-7.1 {
+#  sqlite3 db test.db
+#  catch {
+#    sqlite3_enable_shared_cache 0
+#  } msg
+#  set msg
+#} {library routine called out of sequence}
 
 # Again provoke a malloc() failure when a cursor position is being saved, 
 # this time during a ROLLBACK operation by some other handle. 
@@ -473,7 +388,7 @@ do_test shared_misuse-7.1 {
 # be aborted.
 # 
 set ::aborted 0
-do_malloc_test 8 -tclprep {
+do_malloc_test shared_err-8 -tclprep {
   sqlite3 db2 test.db
   execsql {
     PRAGMA read_uncommitted = 1;
@@ -497,20 +412,35 @@ do_malloc_test 8 -tclprep {
     ROLLBACK;
   }
 } -cleanup {
+  # UPDATE: As of [5668], if the rollback fails SQLITE_CORRUPT is returned. 
+  # So these tests have been updated to expect SQLITE_CORRUPT and its
+  # associated English language error message.
+  #
   do_test shared_malloc-8.$::n.cleanup.1 {
-    lrange [execsql {
-      SELECT a FROM t1;
-    } db2] 0 1
-  } {0000000000 1111111111}
+    set res [catchsql {SELECT a FROM t1} db2]
+    set ans [lindex $res 1]
+    if {[lindex $res 0]} {
+       set r [expr {
+         $ans=="disk I/O error" ||
+         $ans=="out of memory" ||
+         $ans=="database disk image is malformed"
+       }]
+    } else {
+       set r [expr {[lrange $ans 0 1]=="0000000000 1111111111"}]
+    }
+  } {1}
   do_test shared_malloc-8.$::n.cleanup.2 {
     set rc1 [sqlite3_step $::STMT]
     set rc2 [sqlite3_finalize $::STMT]
-    if {$rc1=="SQLITE_ABORT"} {
+    if {$rc2=="SQLITE_ABORT"} {
       incr ::aborted
     }
     expr {
       ($rc1=="SQLITE_DONE" && $rc2=="SQLITE_OK") || 
-      ($rc1=="SQLITE_ABORT" && $rc2=="SQLITE_OK")
+      ($rc1=="SQLITE_ERROR" && $rc2=="SQLITE_ABORT") ||
+      ($rc1=="SQLITE_ERROR" && $rc2=="SQLITE_NOMEM") ||
+      ($rc1=="SQLITE_ERROR" && $rc2=="SQLITE_IOERR") ||
+      ($rc1=="SQLITE_ERROR" && $rc2=="SQLITE_CORRUPT")
     }
   } {1}
   db2 close
@@ -520,6 +450,72 @@ do_test shared_malloc-8.X {
   expr $::aborted>=1
 } {1}
 
+# This test is designed to catch a specific bug that was present during
+# development of 3.5.0. If a malloc() failed while setting the page-size,
+# a buffer (Pager.pTmpSpace) was being freed. This could cause a seg-fault
+# later if another connection tried to use the pager.
+#
+# This test will crash 3.4.2.
+#
+do_malloc_test shared_err-9 -tclprep {
+  sqlite3 db2 test.db
+} -sqlbody {
+  PRAGMA page_size = 4096;
+  PRAGMA page_size = 1024;
+} -cleanup {
+  db2 eval {
+    CREATE TABLE abc(a, b, c);
+    BEGIN;
+    INSERT INTO abc VALUES(1, 2, 3);
+    ROLLBACK;
+  }     
+  db2 close
+}     
+
 catch {db close}
+catch {db2 close}
+do_malloc_test shared_err-10 -tclprep {
+  sqlite3 db test.db
+  sqlite3 db2 test.db
+  
+  db eval { SELECT * FROM sqlite_master }
+  db2 eval { 
+    BEGIN;
+    CREATE TABLE abc(a, b, c);
+  }
+} -tclbody {
+  catch {db eval {SELECT * FROM sqlite_master}}
+  error 1
+} -cleanup {
+  execsql { SELECT * FROM sqlite_master }
+}
+
+do_malloc_test shared_err-11 -tclprep {
+  sqlite3 db test.db
+  sqlite3 db2 test.db
+  
+  db eval { SELECT * FROM sqlite_master }
+  db2 eval { 
+    BEGIN;
+    CREATE TABLE abc(a, b, c);
+  }
+} -tclbody {
+  catch {db eval {SELECT * FROM sqlite_master}}
+  catch {sqlite3_errmsg16 db}
+  error 1
+} -cleanup {
+  execsql { SELECT * FROM sqlite_master }
+}
+
+catch {db close}
+catch {db2 close}
+
+do_malloc_test shared_err-12 -sqlbody {
+  CREATE TABLE abc(a, b, c);
+  INSERT INTO abc VALUES(1, 2, 3);
+}
+
+catch {db close}
+catch {db2 close}
 sqlite3_enable_shared_cache $::enable_shared_cache
 finish_test

@@ -21,10 +21,15 @@
 #     sqlite3_value_bytes()
 #     sqlite3_value_bytes16()
 #
-# $Id: ptrchng.test,v 1.1 2007/04/27 17:16:22 drh Exp $
+# $Id: ptrchng.test,v 1.5 2008/07/12 14:52:20 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
+
+ifcapable !bloblit {
+  finish_test
+  return
+}
 
 # Register the "pointer_change" SQL function.
 #
@@ -47,6 +52,8 @@ do_test ptrchng-1.1 {
 # For the short entries that fit in the Mem.zBuf[], the pointer should
 # never change regardless of what type conversions occur.
 #
+# UPDATE: No longer true, as Mem.zBuf[] has been removed.
+#
 do_test ptrchng-2.1 {
   execsql {
     SELECT pointer_change(y, 'text', 'noop', 'blob') FROM t1 WHERE x=1
@@ -62,12 +69,12 @@ ifcapable utf16 {
     execsql {
       SELECT pointer_change(y, 'text', 'noop', 'text16') FROM t1 WHERE x=1
     }
-  } {0}
+  } {1}
   do_test ptrchng-2.4 {
     execsql {
       SELECT pointer_change(y, 'blob', 'noop', 'text16') FROM t1 WHERE x=1
     }
-  } {0}
+  } {1}
   do_test ptrchng-2.5 {
     execsql {
       SELECT pointer_change(y, 'text16', 'noop', 'blob') FROM t1 WHERE x=1
@@ -77,7 +84,7 @@ ifcapable utf16 {
     execsql {
       SELECT pointer_change(y, 'text16', 'noop', 'text') FROM t1 WHERE x=1
     }
-  } {0}
+  } {1}
 }
 do_test ptrchng-2.11 {
   execsql {
@@ -94,23 +101,22 @@ ifcapable utf16 {
     execsql {
       SELECT pointer_change(y, 'text', 'noop', 'text16') FROM t1 WHERE x=3
     }
-  } {0}
+  } {1}
   do_test ptrchng-2.14 {
     execsql {
       SELECT pointer_change(y, 'blob', 'noop', 'text16') FROM t1 WHERE x=3
     }
-  } {0}
+  } {1}
   do_test ptrchng-2.15 {
     execsql {
       SELECT pointer_change(y, 'text16', 'noop', 'blob') FROM t1 WHERE x=3
     }
   } {0}
   do_test ptrchng-2.16 {
-btree_breakpoint
     execsql {
       SELECT pointer_change(y, 'text16', 'noop', 'text') FROM t1 WHERE x=3
     }
-  } {0}
+  } {1}
 }
 
 # For the long entries that do not fit in the Mem.zBuf[], the pointer

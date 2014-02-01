@@ -9,7 +9,7 @@
 #
 #***********************************************************************
 #
-# $Id: cache.test,v 1.2 2007/04/06 21:42:22 drh Exp $
+# $Id: cache.test,v 1.4 2007/08/22 02:56:44 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -18,10 +18,13 @@ ifcapable {!pager_pragmas} {
   finish_test
   return
 }
+sqlite3_soft_heap_limit 0
 
 proc pager_cache_size {db} {
   set bt [btree_from_db $db]
+  db_enter $db
   array set stats [btree_pager_stats $bt]
+  db_leave $db
   return $stats(page)
 }
 
@@ -55,5 +58,6 @@ for {set ii 0} {$ii < 10} {incr ii} {
   } $::cache_size
 
 }
+sqlite3_soft_heap_limit $soft_limit
 
 finish_test

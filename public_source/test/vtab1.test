@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this file is creating and dropping virtual tables.
 #
-# $Id: vtab1.test,v 1.42 2007/03/30 14:56:35 danielk1977 Exp $
+# $Id: vtab1.test,v 1.57 2008/08/01 17:51:47 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -41,6 +41,8 @@ ifcapable !vtab||!schema_pragmas {
 #   * How to test the sqlite3_index_constraint_usage.omit field?
 #   * vtab1-5.*
 #
+# vtab1-14.*: Test 'IN' constraints - i.e. "SELECT * FROM t1 WHERE id IN(...)"
+#
 
 
 #----------------------------------------------------------------------
@@ -50,6 +52,9 @@ ifcapable !vtab||!schema_pragmas {
 # We cannot create a virtual table if the module has not been registered.
 #
 do_test vtab1-1.1 {
+  explain {
+    CREATE VIRTUAL TABLE t1 USING echo;
+  }
   catchsql {
     CREATE VIRTUAL TABLE t1 USING echo;
   }
@@ -179,10 +184,24 @@ do_test vtab1-1.15 {
 } {1 {no such module: echo}}
 
 register_echo_module [sqlite3_connection_pointer db]
-do_test vtab1-1.X {
+register_echo_module [sqlite3_connection_pointer db]
+
+# Test an error message returned from a v-table constructor.
+#
+do_test vtab1-1.16 {
   execsql {
     DROP TABLE techo;
+    CREATE TABLE logmsg(log);
+  }
+  catchsql {
+    CREATE VIRTUAL TABLE techo USING echo(treal, logmsg);
+  }
+} {1 {table 'logmsg' already exists}}
+
+do_test vtab1-1.17 {
+  execsql {
     DROP TABLE treal;
+    DROP TABLE logmsg;
     SELECT sql FROM sqlite_master;
   }
 } {}
@@ -243,7 +262,6 @@ do_test vtab1-2.4 {
 # echo module has not been registered with this database connection.
 #
 do_test vtab1.2.6 {
-breakpoint
   catchsql { PRAGMA table_info(t1); }
 } {1 {no such module: echo}}
 
@@ -417,6 +435,8 @@ do_test vtab1-3.13 {
   set echo_module
 } [list xBestIndex {SELECT rowid, * FROM 'treal'} \
         xFilter    {SELECT rowid, * FROM 'treal'}]
+ifcapable subquery {
+# The echo module uses a subquery internally to implement the MATCH operator.
 do_test vtab1-3.14 {
   set echo_module ""
   execsql {
@@ -430,6 +450,7 @@ do_test vtab1-3.15 {
         xFilter \
         {SELECT rowid, * FROM 'treal' WHERE b LIKE (SELECT '%'||?||'%')} \
         string ]
+}; #ifcapable subquery
 
 #----------------------------------------------------------------------
 # Test case vtab1-3 test table scans and the echo module's 
@@ -592,40 +613,116 @@ do_test vtab1-6-2 {
     SELECT name FROM sqlite_master WHERE type = 'table';
   }
 } {treal techo}
-do_test vtab1-6-3 {
+do_test vtab1-6-3.1.1 {
   execsql {
+    PRAGMA count_changes=ON;
     INSERT INTO techo VALUES(1, 2, 3);
+  }
+} {1}
+do_test vtab1-6-3.1.2 {
+  db changes
+} {1}
+do_test vtab1-6-3.2 {
+  execsql {
     SELECT * FROM techo;
   }
 } {1 2 3}
-do_test vtab1-6-4 {
+do_test vtab1-6-4.1 {
   execsql {
     UPDATE techo SET a = 5;
+  }
+  db changes
+} {1}
+do_test vtab1-6-4.2 {
+  execsql {
+    SELECT * FROM techo;
+  }
+} {5 2 3}
+do_test vtab1-6-4.3 {
+  execsql {
+    UPDATE techo SET a=6 WHERE a<0;
+  }
+  db changes
+} {0}
+do_test vtab1-6-4.4 {
+  execsql {
     SELECT * FROM techo;
   }
 } {5 2 3}
 
-do_test vtab1-6-5 {
+do_test vtab1-6-5.1 {
  execsql {
    UPDATE techo set a = a||b||c;
+ }
+ db changes
+} {1}
+do_test vtab1-6-5.2 {
+ execsql {
    SELECT * FROM techo;
  }
 } {523 2 3}
 
-do_test vtab1-6-6 {
+do_test vtab1-6-6.1 {
   execsql {
     UPDATE techo set rowid = 10;
+  }
+  db changes
+} {1}
+do_test vtab1-6-6.2 {
+  execsql {
     SELECT rowid FROM techo;
   }
 } {10}
 
-do_test vtab1-6-7 {
+do_test vtab1-6-7.1.1 {
+  execsql {
+    INSERT INTO techo VALUES(11,12,13);
+  }
+} {1}
+do_test vtab1-6-7.1.2 {
+  db changes
+} {1}
+do_test vtab1-6-7.2 {
+  execsql {
+    SELECT * FROM techo ORDER BY a;
+  }
+} {11 12 13 523 2 3}
+do_test vtab1-6-7.3 {
+  execsql {
+    UPDATE techo SET b=b+1000
+  }
+  db changes
+} {2}
+do_test vtab1-6-7.4 {
+  execsql {
+    SELECT * FROM techo ORDER BY a;
+  }
+} {11 1012 13 523 1002 3}
+
+
+do_test vtab1-6-8.1 {
+  execsql {
+    DELETE FROM techo WHERE a=5;
+  }
+  db changes
+} {0}
+do_test vtab1-6-8.2 {
+  execsql {
+    SELECT * FROM techo ORDER BY a;
+  }
+} {11 1012 13 523 1002 3}
+do_test vtab1-6-8.3 {
   execsql {
     DELETE FROM techo;
-    SELECT * FROM techo;
+  }
+  db changes
+} {2}
+do_test vtab1-6-8.4 {
+  execsql {
+    SELECT * FROM techo ORDER BY a;
   }
 } {}
-
+execsql {PRAGMA count_changes=OFF}
 
 file delete -force test2.db
 file delete -force test2.db-journal
@@ -749,20 +846,24 @@ do_test vtab1.7-13 {
   }
 } {}
 
-do_test vtab1.8-1 {
-  set echo_module ""
-  execsql {
-    ATTACH 'test2.db' AS aux;
-    CREATE VIRTUAL TABLE aux.e2 USING echo(real_abc);
-  }
-  set echo_module
-} [list xCreate echo aux e2 real_abc   \
-        xSync   echo(real_abc)         \
-        xCommit echo(real_abc)         \
-]
+ifcapable attach {
+  do_test vtab1.8-1 {
+    set echo_module ""
+    execsql {
+      ATTACH 'test2.db' AS aux;
+      CREATE VIRTUAL TABLE aux.e2 USING echo(real_abc);
+    }
+    set echo_module
+  } [list xCreate echo aux e2 real_abc   \
+          xSync   echo(real_abc)         \
+          xCommit echo(real_abc)         \
+  ]
+}
 do_test vtab1.8-2 {
-  execsql {
+  catchsql {
     DROP TABLE aux.e2;
+  }
+  execsql {
     DROP TABLE treal;
     DROP TABLE techo;
     DROP TABLE echo_abc;
@@ -890,6 +991,175 @@ do_test vtab1.11-5 {
   }
 } {{2 1} {2 2}}
  
+#----------------------------------------------------------------------
+# Test the outcome if a constraint is encountered half-way through
+# a multi-row INSERT that is inside a transaction
+#
+do_test vtab1.12-1 {
+  execsql {
+    CREATE TABLE b(a, b, c);
+    CREATE TABLE c(a UNIQUE, b, c);
+    INSERT INTO b VALUES(1, 'A', 'B');
+    INSERT INTO b VALUES(2, 'C', 'D');
+    INSERT INTO b VALUES(3, 'E', 'F');
+    INSERT INTO c VALUES(3, 'G', 'H');
+    CREATE VIRTUAL TABLE echo_c USING echo(c);
+  }
+} {}
+
+# First test outside of a transaction.
+do_test vtab1.12-2 {
+  catchsql { INSERT INTO echo_c SELECT * FROM b; }
+} {1 {echo-vtab-error: column a is not unique}}
+do_test vtab1.12-2.1 {
+  sqlite3_errmsg db
+} {echo-vtab-error: column a is not unique}
+do_test vtab1.12-3 {
+  execsql { SELECT * FROM c }
+} {3 G H}
+
+# Now the real test - wrapped in a transaction.
+do_test vtab1.12-4 {
+  execsql  {BEGIN}
+  catchsql { INSERT INTO echo_c SELECT * FROM b; }
+} {1 {echo-vtab-error: column a is not unique}}
+do_test vtab1.12-5 {
+  execsql { SELECT * FROM c }
+} {3 G H}
+do_test vtab1.12-6 {
+  execsql { COMMIT }
+  execsql { SELECT * FROM c }
+} {3 G H}
+
+# At one point (ticket #2759), a WHERE clause of the form "<column> IS NULL"
+# on a virtual table was causing an assert() to fail in the compiler.
+#
+# "IS NULL" clauses should not be passed through to the virtual table
+# implementation. They are handled by SQLite after the vtab returns its
+# data.
+#
+do_test vtab1.13-1 {
+  execsql { 
+    SELECT * FROM echo_c WHERE a IS NULL 
+  }
+} {}
+do_test vtab1.13-2 {
+  execsql { 
+    INSERT INTO c VALUES(NULL, 15, 16);
+    SELECT * FROM echo_c WHERE a IS NULL 
+  }
+} {{} 15 16}
+do_test vtab1.13-3 {
+  execsql { 
+    INSERT INTO c VALUES(15, NULL, 16);
+    SELECT * FROM echo_c WHERE b IS NULL 
+  }
+} {15 {} 16}
+do_test vtab1.13-3 {
+  execsql { 
+    SELECT * FROM echo_c WHERE b IS NULL AND a = 15;
+  }
+} {15 {} 16}
+
+
+do_test vtab1-14.1 {
+  execsql { DELETE FROM c }
+  set echo_module ""
+  execsql { SELECT * FROM echo_c WHERE rowid IN (1, 2, 3) }
+  set echo_module
+} [list xBestIndex {SELECT rowid, * FROM 'c'} xFilter {SELECT rowid, * FROM 'c'}]
+
+do_test vtab1-14.2 {
+  set echo_module ""
+  execsql { SELECT * FROM echo_c WHERE rowid = 1 }
+  set echo_module
+} [list xBestIndex {SELECT rowid, * FROM 'c' WHERE rowid = ?} xFilter {SELECT rowid, * FROM 'c' WHERE rowid = ?} 1]
+
+do_test vtab1-14.3 {
+  set echo_module ""
+  execsql { SELECT * FROM echo_c WHERE a = 1 }
+  set echo_module
+} [list xBestIndex {SELECT rowid, * FROM 'c' WHERE a = ?} xFilter {SELECT rowid, * FROM 'c' WHERE a = ?} 1]
+
+do_test vtab1-14.4 {
+  set echo_module ""
+  execsql { SELECT * FROM echo_c WHERE a IN (1, 2) }
+  set echo_module
+} [list xBestIndex {SELECT rowid, * FROM 'c'} xFilter {SELECT rowid, * FROM 'c'}]
+
+do_test vtab1-15.1 {
+  execsql {
+    CREATE TABLE t1(a, b, c);
+    CREATE VIRTUAL TABLE echo_t1 USING echo(t1);
+  }
+} {}
+do_test vtab1-15.2 {
+  execsql {
+    INSERT INTO echo_t1(rowid) VALUES(45);
+    SELECT rowid, * FROM echo_t1;
+  }
+} {45 {} {} {}}
+do_test vtab1-15.3 {
+  execsql {
+    INSERT INTO echo_t1(rowid) VALUES(NULL);
+    SELECT rowid, * FROM echo_t1;
+  }
+} {45 {} {} {} 46 {} {} {}}
+do_test vtab1-15.4 {
+  catchsql {
+    INSERT INTO echo_t1(rowid) VALUES('new rowid');
+  }
+} {1 {datatype mismatch}}
+
+# The following tests - vtab1-16.* - are designed to test that setting 
+# sqlite3_vtab.zErrMsg variable can be used by the vtab interface to 
+# return an error message to the user.
+# 
+do_test vtab1-16.1 {
+  execsql {
+    CREATE TABLE t2(a PRIMARY KEY, b, c);
+    INSERT INTO t2 VALUES(1, 2, 3);
+    INSERT INTO t2 VALUES(4, 5, 6);
+    CREATE VIRTUAL TABLE echo_t2 USING echo(t2);
+  }
+} {}
+
+set tn 2
+foreach method [list \
+    xBestIndex       \
+    xOpen            \
+    xFilter          \
+    xNext            \
+    xColumn          \
+    xRowid           \
+] {
+  do_test vtab1-16.$tn {
+    set echo_module_fail($method,t2) "the $method method has failed"
+    catchsql { SELECT rowid, * FROM echo_t2 WHERE a >= 1 }
+  } "1 {echo-vtab-error: the $method method has failed}"
+  unset echo_module_fail($method,t2)
+  incr tn
+}
+
+foreach method [list \
+  xUpdate            \
+  xBegin             \
+  xSync              \
+] {
+  do_test vtab1-16.$tn {
+    set echo_module_fail($method,t2) "the $method method has failed"
+    catchsql { INSERT INTO echo_t2 VALUES(7, 8, 9) }
+  } "1 {echo-vtab-error: the $method method has failed}"
+  unset echo_module_fail($method,t2)
+  incr tn
+}
+
+do_test vtab1-16.$tn {
+  set echo_module_fail(xRename,t2) "the xRename method has failed"
+  catchsql { ALTER TABLE echo_t2 RENAME TO another_name }
+} "1 {echo-vtab-error: the xRename method has failed}"
+unset echo_module_fail(xRename,t2)
+incr tn
 
 unset -nocomplain echo_module_begin_fail
 finish_test

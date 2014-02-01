@@ -14,7 +14,7 @@
 # Note: There are also some tests for incremental vacuum and IO 
 # errors in incrvacuum_ioerr.test.
 #
-# $Id: incrvacuum.test,v 1.10 2007/05/24 10:18:22 danielk1977 Exp $
+# $Id: incrvacuum.test,v 1.23 2009/02/18 20:31:18 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -34,11 +34,21 @@ do_test incrvacuum-1.1 {
     pragma auto_vacuum;
   }
 } $sqlite_options(default_autovacuum)
+do_test incrvacuum-1.2.0 {
+  # File size is sometimes 1 instead of 0 due to the hack we put in
+  # to work around ticket #3260.  Search for comments on #3260 in
+  # os_unix.c.
+  expr {[file size test.db] > 1}
+} {0}
 do_test incrvacuum-1.2 {
+  # This command will create the database.
   execsql {
     pragma auto_vacuum = 'full';
     pragma auto_vacuum;
   }
+} {1}
+do_test incrvacuum-1.2.1 {
+  expr {[file size test.db] > 0}
 } {1}
 do_test incrvacuum-1.3 {
   execsql {
@@ -47,11 +57,13 @@ do_test incrvacuum-1.3 {
   }
 } {2}
 do_test incrvacuum-1.4 {
+  # In this case the invalid value is ignored and the auto_vacuum
+  # setting remains unchanged.
   execsql {
     pragma auto_vacuum = 'invalid';
     pragma auto_vacuum;
   }
-} {0}
+} {2}
 do_test incrvacuum-1.5 {
   execsql {
     pragma auto_vacuum = 1;
@@ -65,11 +77,12 @@ do_test incrvacuum-1.6 {
   }
 } {2}
 do_test incrvacuum-1.7 {
+  # Invalid value. auto_vacuum setting remains unchanged.
   execsql {
     pragma auto_vacuum = 5;
     pragma auto_vacuum;
   }
-} {0}
+} {2}
 
 #---------------------------------------------------------------------
 # Test the pragma on a non-empty database. It is possible to toggle
@@ -287,6 +300,11 @@ set TestScriptList [list {
   INSERT INTO t3 VALUES('hello', 'world');
 }
 ]
+
+# If this build omits subqueries, step 2 in the above list will not
+# work. Replace it with "" in this case. 
+#
+ifcapable !subquery { lset TestScriptList 2 "" }
 
 # Compare the contents of databases $A and $B.
 #
@@ -535,7 +553,7 @@ do_test incrvacuum-10.4 {
 
 do_test incrvacuum-10.5 {
   execsql {
-    PRAGMA incremental_vacuum("3");
+    PRAGMA incremental_vacuum("+3");
   }
   expr [file size test.db] / 1024
 } {19}
@@ -548,11 +566,219 @@ do_test incrvacuum-10.6 {
 } {18}
 
 do_test incrvacuum-10.7 {
+  # Use a really big number as an argument to incremetal_vacuum. Should
+  # be interpreted as "free all possible space".
   execsql {
-    PRAGMA incremental_vacuum(0);
+    PRAGMA incremental_vacuum(2147483649);
   }
   expr [file size test.db] / 1024
 } {1}
 
-finish_test
+do_test incrvacuum-10.8 {
+  execsql {
+    CREATE TABLE t1(x);
+    INSERT INTO t1 VALUES(hex(randomblob(1000)));
+    DROP TABLE t1;
+  }
+  # A negative number means free all possible space.
+  execsql {
+    PRAGMA incremental_vacuum=-1;
+  }
+  expr [file size test.db] / 1024
+} {1}
 
+#----------------------------------------------------------------
+# Test that if we set the auto_vacuum mode to 'incremental', then
+# create a database, thereafter that database defaults to incremental 
+# vacuum mode.
+#
+db close
+file delete -force test.db test.db-journal
+sqlite3 db test.db
+
+ifcapable default_autovacuum {
+  do_test incrvacuum-11.1-av-dflt-on {
+    execsql {
+      PRAGMA auto_vacuum;
+    }
+  } $AUTOVACUUM
+} else {
+  do_test incrvacuum-11.1-av-dflt-off {
+    execsql {
+      PRAGMA auto_vacuum;
+    }
+  } {0}
+}
+do_test incrvacuum-11.2 {
+  execsql {
+    PRAGMA auto_vacuum = incremental;
+  }
+} {}
+do_test incrvacuum-11.3 {
+  execsql {
+    PRAGMA auto_vacuum;
+  }
+} {2}
+do_test incrvacuum-11.4 {
+  # The database has now been created.
+  expr {[file size test.db]>0}
+} {1}
+do_test incrvacuum-11.5 {
+  # Close and reopen the connection.
+  db close
+  sqlite3 db test.db
+
+  # Test we are still in incremental vacuum mode.
+  execsql { PRAGMA auto_vacuum; }
+} {2}
+do_test incrvacuum-11.6 {
+  execsql {
+    PRAGMA auto_vacuum = 'full';
+    PRAGMA auto_vacuum;
+  }
+} {1}
+do_test incrvacuum-11.7 {
+  # Close and reopen the connection.
+  db close
+  sqlite3 db test.db
+
+  # Test we are still in "full" auto-vacuum mode.
+  execsql { PRAGMA auto_vacuum; }
+} {1}
+
+#----------------------------------------------------------------------
+# Special case: What happens if the database is locked when a "PRAGMA
+# auto_vacuum = XXX" statement is executed.
+#
+db close
+file delete -force test.db test.db-journal
+sqlite3 db test.db
+
+do_test incrvacuum-12.1 {
+  execsql {
+    PRAGMA auto_vacuum = 1;
+  }
+  expr {[file size test.db]>0}
+} {1}
+
+# Try to change the auto-vacuum from "full" to "incremental" while the
+# database is locked. Nothing should change.
+#
+do_test incrvacuum-12.2 {
+  sqlite3 db2 test.db
+  execsql { BEGIN EXCLUSIVE; } db2
+  catchsql { PRAGMA auto_vacuum = 2; }
+} {1 {database is locked}}
+
+do_test incrvacuum-12.3 {
+  execsql { ROLLBACK; } db2
+  execsql { PRAGMA auto_vacuum }
+} {2}   ;# Still 2 because PRAGMA auto_vacuum setting held in case of vacuum
+do_test incrvacuum-12.4 {
+  db close
+  sqlite3 db test.db
+  execsql { PRAGMA auto_vacuum }
+} {1}   ;# Revert to 1 because the database file did not change
+
+do_test incrvacuum-12.5 {
+  execsql { SELECT * FROM sqlite_master }
+  execsql { PRAGMA auto_vacuum }
+} {1}
+
+#----------------------------------------------------------------------
+# Special case #2: What if one process prepares a "PRAGMA auto_vacuum = XXX"
+# statement when the database is empty, but doesn't execute it until
+# after some other process has created the database.
+#
+db2 close
+db close
+file delete -force test.db test.db-journal
+sqlite3 db test.db  ;  set ::DB [sqlite3_connection_pointer db]
+sqlite3 db2 test.db
+
+do_test incrvacuum-13.1 {
+  # File size is sometimes 1 instead of 0 due to the hack we put in
+  # to work around ticket #3260.  Search for comments on #3260 in
+  # os_unix.c.
+  expr {[file size test.db]>1}
+} {0}
+do_test incrvacuum-13.2 {
+  set ::STMT [sqlite3_prepare $::DB {PRAGMA auto_vacuum = 2} -1 DUMMY]
+  execsql {
+    PRAGMA auto_vacuum = none;
+    PRAGMA default_cache_size = 1024;
+    PRAGMA auto_vacuum;
+  } db2
+} {0}
+do_test incrvacuum-13.3 {
+  expr {[file size test.db]>0}
+} {1}
+do_test incrvacuum-13.4 {
+  set rc [sqlite3_step $::STMT]
+  list $rc [sqlite3_finalize $::STMT]
+} {SQLITE_DONE SQLITE_OK}
+do_test incrvacuum-13.5 {
+  execsql {
+    PRAGMA auto_vacuum;
+  }
+} {0}
+
+
+# Verify that the incremental_vacuum pragma fails gracefully if it
+# is used against an invalid database file.
+#
+do_test incrvacuum-14.1 {
+  set out [open invalid.db w]
+  puts $out "This is not an SQLite database file"
+  close $out
+  sqlite3 db3 invalid.db
+  catchsql {
+    PRAGMA incremental_vacuum(10);
+  } db3
+} {1 {file is encrypted or is not a database}}
+
+do_test incrvacuum-15.1 {
+  db close
+  db2 close
+  file delete -force test.db
+  sqlite3 db test.db
+
+  set str [string repeat "abcdefghij" 500]
+
+  execsql {
+    PRAGMA cache_size = 10;
+    PRAGMA auto_vacuum = incremental;
+    CREATE TABLE t1(x, y);
+    INSERT INTO t1 VALUES('a', $str);
+    INSERT INTO t1 VALUES('b', $str);
+    INSERT INTO t1 VALUES('c', $str);
+    INSERT INTO t1 VALUES('d', $str);
+    INSERT INTO t1 VALUES('e', $str);
+    INSERT INTO t1 VALUES('f', $str);
+    INSERT INTO t1 VALUES('g', $str);
+    INSERT INTO t1 VALUES('h', $str);
+    INSERT INTO t1 VALUES('i', $str);
+    INSERT INTO t1 VALUES('j', $str);
+    INSERT INTO t1 VALUES('j', $str);
+
+    CREATE TABLE t2(x PRIMARY KEY, y);
+    INSERT INTO t2 VALUES('a', $str);
+    INSERT INTO t2 VALUES('b', $str);
+    INSERT INTO t2 VALUES('c', $str);
+    INSERT INTO t2 VALUES('d', $str);
+
+    BEGIN;
+      DELETE FROM t2;
+      PRAGMA incremental_vacuum;
+  }
+
+  catchsql {INSERT INTO t2 SELECT * FROM t1}
+
+  execsql { 
+    COMMIT;
+    PRAGMA integrity_check;
+  }
+} {ok}
+
+db3 close
+finish_test

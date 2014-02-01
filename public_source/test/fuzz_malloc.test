@@ -12,21 +12,18 @@
 #
 # This file tests malloc failures in concert with fuzzy SQL generation.
 #
-# $Id: fuzz_malloc.test,v 1.5 2007/06/18 12:22:43 drh Exp $
+# $Id: fuzz_malloc.test,v 1.10 2008/08/20 16:35:10 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 
-# Only run these tests if memory debugging is turned on.
-#
-if {[info command sqlite_malloc_stat]==""} {
-  puts "Skipping fuzz_malloc tests: not compiled with -DSQLITE_MEMDEBUG=1"
+ifcapable !memdebug {
   finish_test
   return
 }
 
-source $testdir/fuzz_common.tcl
 source $testdir/malloc_common.tcl
+source $testdir/fuzz_common.tcl
 
 if {[info exists ISQUICK]} {
   set ::REPEATS 20
@@ -48,7 +45,7 @@ proc do_fuzzy_malloc_test {testname args} {
   set ::fuzzyopts(-sqlprep) {}
   array set ::fuzzyopts $args
 
-  sqlite_malloc_fail 0
+  sqlite3_memdebug_fail -1
   db close
   file delete test.db test.db-journal
   sqlite3 db test.db
@@ -59,6 +56,7 @@ proc do_fuzzy_malloc_test {testname args} {
     expr srand($jj)
     incr jj
     set ::sql [subst $::fuzzyopts(-template)]
+    # puts fuzyy-sql=\[$::sql\]; flush stdout
     foreach {rc res} [catchsql "$::sql"] {}
     if {$rc==0} {
       do_malloc_test $testname-$ii -sqlbody $::sql -sqlprep $::prep
@@ -93,5 +91,4 @@ do_fuzzy_malloc_test fuzzy_malloc-3 \
   -template {[Select]}              \
   -sqlprep $::SQLPREP
 
-sqlite_malloc_fail 0
 finish_test

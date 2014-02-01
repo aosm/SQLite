@@ -9,7 +9,7 @@
 #
 #***********************************************************************
 #
-# $Id: shared3.test,v 1.1 2006/05/24 12:43:28 drh Exp $
+# $Id: shared3.test,v 1.4 2008/08/20 14:49:25 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -42,6 +42,66 @@ do_test shared3-1.2 {
 
 db1 close
 db2 close
+
+do_test shared3-2.1 {
+  sqlite3 db1 test.db
+  execsql {
+    PRAGMA main.cache_size = 10;
+  } db1
+} {}
+do_test shared3-2.2 {
+  execsql { PRAGMA main.cache_size } db1
+} {10}
+do_test shared3-2.3 {
+  sqlite3 db2 test.db
+  execsql { PRAGMA main.cache_size } db1
+} {10}
+do_test shared3-2.4 {
+  execsql { PRAGMA main.cache_size } db2
+} {10}
+do_test shared3-2.5 {
+  execsql { PRAGMA main.cache_size } db1
+} {10}
+
+# The cache-size should now be 10 pages. However at one point there was
+# a bug that caused the cache size to return to the default value when
+# a second connection was opened on the shared-cache (as happened in
+# test case shared3-2.3 above). The goal of the following tests is to
+# ensure that the cache-size really is 10 pages.
+#
+if {$::tcl_platform(platform)=="unix"} {
+  set alternative_name ./test.db
+} else {
+  set alternative_name TEST.DB
+}
+do_test shared3-2.6 {
+  sqlite3 db3 $alternative_name
+  catchsql {select count(*) from sqlite_master} db3
+} {0 1}
+do_test shared3-2.7 {
+  execsql {
+    BEGIN;
+    INSERT INTO t1 VALUES(10, randomblob(5000))
+  } db1
+  catchsql {select count(*) from sqlite_master} db3
+} {0 1}
+do_test shared3-2.8 {
+  db3 close
+  execsql {
+    INSERT INTO t1 VALUES(10, randomblob(10000))
+  } db1
+  sqlite3 db3 $alternative_name
+
+  # If the pager-cache is really still limited to 10 pages, then the INSERT
+  # statement above should have caused the pager to grab an exclusive lock
+  # on the database file so that the cache could be spilled.
+  #
+  catchsql {select count(*) from sqlite_master} db3
+} {1 {database is locked}}
+
+db1 close
+db2 close
+db3 close
 
 sqlite3_enable_shared_cache $::enable_shared_cache
 finish_test

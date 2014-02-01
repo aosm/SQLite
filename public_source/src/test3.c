@@ -13,11 +13,10 @@
 ** is not included in the SQLite library.  It is used for automated
 ** testing of the SQLite library.
 **
-** $Id: test3.c,v 1.75 2007/05/17 14:45:13 danielk1977 Exp $
+** $Id: test3.c,v 1.103 2009/03/18 10:33:02 danielk1977 Exp $
 */
 #include "sqliteInt.h"
-#include "pager.h"
-#include "btree.h"
+#include "btreeInt.h"
 #include "tcl.h"
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +48,13 @@ static char *errorName(int rc){
 }
 
 /*
+** A bogus sqlite3 connection structure for use in the btree
+** tests.
+*/
+static sqlite3 sDb;
+static int nRefSqlite3 = 0;
+
+/*
 ** Usage:   btree_open FILENAME NCACHE FLAGS
 **
 ** Open a new database
@@ -69,7 +75,14 @@ static int btree_open(
   }
   if( Tcl_GetInt(interp, argv[2], &nCache) ) return TCL_ERROR;
   if( Tcl_GetInt(interp, argv[3], &flags) ) return TCL_ERROR;
-  rc = sqlite3BtreeOpen(argv[1], 0, &pBt, flags);
+  nRefSqlite3++;
+  if( nRefSqlite3==1 ){
+    sDb.pVfs = sqlite3_vfs_find(0);
+    sDb.mutex = sqlite3MutexAlloc(SQLITE_MUTEX_RECURSIVE);
+    sqlite3_mutex_enter(sDb.mutex);
+  }
+  rc = sqlite3BtreeOpen(argv[1], &sDb, &pBt, flags,
+     SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_MAIN_DB);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -98,14 +111,22 @@ static int btree_close(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   rc = sqlite3BtreeClose(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
   }
+  nRefSqlite3--;
+  if( nRefSqlite3==0 ){
+    sqlite3_mutex_leave(sDb.mutex);
+    sqlite3_mutex_free(sDb.mutex);
+    sDb.mutex = 0;
+    sDb.pVfs = 0;
+  }
   return TCL_OK;
 }
+
 
 /*
 ** Usage:   btree_begin_transaction ID
@@ -125,8 +146,10 @@ static int btree_begin_transaction(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeBeginTrans(pBt, 1);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -152,8 +175,10 @@ static int btree_rollback(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeRollback(pBt);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -179,8 +204,10 @@ static int btree_commit(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeCommit(pBt);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -206,8 +233,10 @@ static int btree_begin_statement(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
-  rc = sqlite3BtreeBeginStmt(pBt);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
+  rc = sqlite3BtreeBeginStmt(pBt, 1);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -233,8 +262,13 @@ static int btree_rollback_statement(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
-  rc = sqlite3BtreeRollbackStmt(pBt);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
+  rc = sqlite3BtreeSavepoint(pBt, SAVEPOINT_ROLLBACK, 0);
+  if( rc==SQLITE_OK ){
+    rc = sqlite3BtreeSavepoint(pBt, SAVEPOINT_RELEASE, 0);
+  }
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -260,8 +294,10 @@ static int btree_commit_statement(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
-  rc = sqlite3BtreeCommitStmt(pBt);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
+  rc = sqlite3BtreeSavepoint(pBt, SAVEPOINT_RELEASE, 0);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -288,9 +324,11 @@ static int btree_create_table(
        " ID FLAGS\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &flags) ) return TCL_ERROR;
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeCreateTable(pBt, &iTable, flags);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -320,9 +358,11 @@ static int btree_drop_table(
        " ID TABLENUM\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &iTable) ) return TCL_ERROR;
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeDropTable(pBt, iTable, &notUsed1);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -349,9 +389,11 @@ static int btree_clear_table(
        " ID TABLENUM\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &iTable) ) return TCL_ERROR;
-  rc = sqlite3BtreeClearTable(pBt, iTable);
+  sqlite3BtreeEnter(pBt);
+  rc = sqlite3BtreeClearTable(pBt, iTable, 0);
+  sqlite3BtreeLeave(pBt);
   if( rc!=SQLITE_OK ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -378,11 +420,13 @@ static int btree_get_meta(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   for(i=0; i<SQLITE_N_BTREE_META; i++){
     char zBuf[30];
-    unsigned int v;
+    u32 v;
+    sqlite3BtreeEnter(pBt);
     rc = sqlite3BtreeGetMeta(pBt, i, &v);
+    sqlite3BtreeLeave(pBt);
     if( rc!=SQLITE_OK ){
       Tcl_AppendResult(interp, errorName(rc), 0);
       return TCL_ERROR;
@@ -416,76 +460,18 @@ static int btree_update_meta(
        " ID METADATA...\" (METADATA is ", zBuf, " integers)", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   for(i=1; i<SQLITE_N_BTREE_META; i++){
     if( Tcl_GetInt(interp, argv[i+2], &aMeta[i]) ) return TCL_ERROR;
   }
   for(i=1; i<SQLITE_N_BTREE_META; i++){
+    sqlite3BtreeEnter(pBt);
     rc = sqlite3BtreeUpdateMeta(pBt, i, aMeta[i]);
+    sqlite3BtreeLeave(pBt);
     if( rc!=SQLITE_OK ){
       Tcl_AppendResult(interp, errorName(rc), 0);
       return TCL_ERROR;
     }
-  }
-  return TCL_OK;
-}
-
-/*
-** Usage:   btree_page_dump ID PAGENUM
-**
-** Print a disassembly of a page on standard output
-*/
-static int btree_page_dump(
-  void *NotUsed,
-  Tcl_Interp *interp,    /* The TCL interpreter that invoked this command */
-  int argc,              /* Number of arguments */
-  const char **argv      /* Text of each argument */
-){
-  Btree *pBt;
-  int iPage;
-  int rc;
-
-  if( argc!=3 ){
-    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
-       " ID\"", 0);
-    return TCL_ERROR;
-  }
-  pBt = sqlite3TextToPtr(argv[1]);
-  if( Tcl_GetInt(interp, argv[2], &iPage) ) return TCL_ERROR;
-  rc = sqlite3BtreePageDump(pBt, iPage, 0);
-  if( rc!=SQLITE_OK ){
-    Tcl_AppendResult(interp, errorName(rc), 0);
-    return TCL_ERROR;
-  }
-  return TCL_OK;
-}
-
-/*
-** Usage:   btree_tree_dump ID PAGENUM
-**
-** Print a disassembly of a page and all its child pages on standard output
-*/
-static int btree_tree_dump(
-  void *NotUsed,
-  Tcl_Interp *interp,    /* The TCL interpreter that invoked this command */
-  int argc,              /* Number of arguments */
-  const char **argv      /* Text of each argument */
-){
-  Btree *pBt;
-  int iPage;
-  int rc;
-
-  if( argc!=3 ){
-    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
-       " ID\"", 0);
-    return TCL_ERROR;
-  }
-  pBt = sqlite3TextToPtr(argv[1]);
-  if( Tcl_GetInt(interp, argv[2], &iPage) ) return TCL_ERROR;
-  rc = sqlite3BtreePageDump(pBt, iPage, 1);
-  if( rc!=SQLITE_OK ){
-    Tcl_AppendResult(interp, errorName(rc), 0);
-    return TCL_ERROR;
   }
   return TCL_OK;
 }
@@ -510,7 +496,18 @@ static int btree_pager_stats(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+ 
+  /* Normally in this file, with a b-tree handle opened using the 
+  ** [btree_open] command it is safe to call sqlite3BtreeEnter() directly.
+  ** But this function is sometimes called with a btree handle obtained
+  ** from an open SQLite connection (using [btree_from_db]). In this case
+  ** we need to obtain the mutex for the controlling SQLite handle before
+  ** it is safe to call sqlite3BtreeEnter().
+  */
+  sqlite3_mutex_enter(pBt->db->mutex);
+
+  sqlite3BtreeEnter(pBt);
   a = sqlite3PagerStats(sqlite3BtreePager(pBt));
   for(i=0; i<11; i++){
     static char *zName[] = {
@@ -522,31 +519,10 @@ static int btree_pager_stats(
     sqlite3_snprintf(sizeof(zBuf), zBuf,"%d",a[i]);
     Tcl_AppendElement(interp, zBuf);
   }
-  return TCL_OK;
-}
+  sqlite3BtreeLeave(pBt);
 
-/*
-** Usage:   btree_pager_ref_dump ID
-**
-** Print out all outstanding pages.
-*/
-static int btree_pager_ref_dump(
-  void *NotUsed,
-  Tcl_Interp *interp,    /* The TCL interpreter that invoked this command */
-  int argc,              /* Number of arguments */
-  const char **argv      /* Text of each argument */
-){
-  Btree *pBt;
-
-  if( argc!=2 ){
-    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
-       " ID\"", 0);
-    return TCL_ERROR;
-  }
-  pBt = sqlite3TextToPtr(argv[1]);
-#ifdef SQLITE_DEBUG
-  sqlite3PagerRefdump(sqlite3BtreePager(pBt));
-#endif
+  /* Release the mutex on the SQLite handle that controls this b-tree */
+  sqlite3_mutex_leave(pBt->db->mutex);
   return TCL_OK;
 }
 
@@ -575,21 +551,23 @@ static int btree_integrity_check(
        " ID ROOT ...\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   nRoot = argc-2;
-  aRoot = (int*)malloc( sizeof(int)*(argc-2) );
+  aRoot = (int*)sqlite3_malloc( sizeof(int)*(argc-2) );
   for(i=0; i<argc-2; i++){
     if( Tcl_GetInt(interp, argv[i+2], &aRoot[i]) ) return TCL_ERROR;
   }
 #ifndef SQLITE_OMIT_INTEGRITY_CHECK
+  sqlite3BtreeEnter(pBt);
   zResult = sqlite3BtreeIntegrityCheck(pBt, aRoot, nRoot, 10000, &nErr);
+  sqlite3BtreeLeave(pBt);
 #else
   zResult = 0;
 #endif
-  free((void*)aRoot);
+  sqlite3_free((void*)aRoot);
   if( zResult ){
     Tcl_AppendResult(interp, zResult, 0);
-    sqliteFree(zResult); 
+    sqlite3_free(zResult); 
   }
   return TCL_OK;
 }
@@ -612,8 +590,10 @@ static int btree_cursor_list(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pBt);
   sqlite3BtreeCursorList(pBt);
+  sqlite3BtreeLeave(pBt);
   return SQLITE_OK;
 }
 
@@ -640,11 +620,16 @@ static int btree_cursor(
        " ID TABLENUM WRITEABLE\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &iTable) ) return TCL_ERROR;
   if( Tcl_GetBoolean(interp, argv[3], &wrFlag) ) return TCL_ERROR;
-  rc = sqlite3BtreeCursor(pBt, iTable, wrFlag, 0, 0, &pCur);
+  pCur = (BtCursor *)ckalloc(sqlite3BtreeCursorSize());
+  memset(pCur, 0, sqlite3BtreeCursorSize());
+  sqlite3BtreeEnter(pBt);
+  rc = sqlite3BtreeCursor(pBt, iTable, wrFlag, 0, pCur);
+  sqlite3BtreeLeave(pBt);
   if( rc ){
+    ckfree((char *)pCur);
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
   }
@@ -665,6 +650,7 @@ static int btree_close_cursor(
   const char **argv      /* Text of each argument */
 ){
   BtCursor *pCur;
+  Btree *pBt;
   int rc;
 
   if( argc!=2 ){
@@ -672,8 +658,12 @@ static int btree_close_cursor(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  pBt = pCur->pBtree;
+  sqlite3BtreeEnter(pBt);
   rc = sqlite3BtreeCloseCursor(pCur);
+  sqlite3BtreeLeave(pBt);
+  ckfree((char *)pCur);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -702,14 +692,19 @@ static int btree_move_to(
        " ID KEY\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   if( sqlite3BtreeFlags(pCur) & BTREE_INTKEY ){
     int iKey;
-    if( Tcl_GetInt(interp, argv[2], &iKey) ) return TCL_ERROR;
-    rc = sqlite3BtreeMoveto(pCur, 0, iKey, 0, &res);
+    if( Tcl_GetInt(interp, argv[2], &iKey) ){
+      sqlite3BtreeLeave(pCur->pBtree);
+      return TCL_ERROR;
+    }
+    rc = sqlite3BtreeMovetoUnpacked(pCur, 0, iKey, 0, &res);
   }else{
     rc = sqlite3BtreeMoveto(pCur, argv[2], strlen(argv[2]), 0, &res);  
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -740,8 +735,10 @@ static int btree_delete(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreeDelete(pCur);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -769,17 +766,21 @@ static int btree_insert(
     Tcl_WrongNumArgs(interp, 1, objv, "ID KEY DATA ?NZERO?");
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(Tcl_GetString(objv[1]));
+  pCur = sqlite3TestTextToPtr(Tcl_GetString(objv[1]));
   if( objc==5 ){
     if( Tcl_GetIntFromObj(interp, objv[4], &nZero) ) return TCL_ERROR;
   }else{
     nZero = 0;
   }
+  sqlite3BtreeEnter(pCur->pBtree);
   if( sqlite3BtreeFlags(pCur) & BTREE_INTKEY ){
     i64 iKey;
     int len;
     unsigned char *pBuf;
-    if( Tcl_GetWideIntFromObj(interp, objv[2], &iKey) ) return TCL_ERROR;
+    if( Tcl_GetWideIntFromObj(interp, objv[2], &iKey) ){
+      sqlite3BtreeLeave(pCur->pBtree);
+      return TCL_ERROR;
+    }
     pBuf = Tcl_GetByteArrayFromObj(objv[3], &len);
     rc = sqlite3BtreeInsert(pCur, 0, iKey, pBuf, len, nZero, 0);
   }else{
@@ -791,6 +792,7 @@ static int btree_insert(
     pDBuf = Tcl_GetByteArrayFromObj(objv[3], &dlen);
     rc = sqlite3BtreeInsert(pCur, pKBuf, keylen, pDBuf, dlen, nZero, 0);
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -821,8 +823,10 @@ static int btree_next(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreeNext(pCur, &res);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -855,8 +859,10 @@ static int btree_prev(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreePrevious(pCur, &res);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -888,8 +894,10 @@ static int btree_first(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreeFirst(pCur, &res);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -921,8 +929,10 @@ static int btree_last(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreeLast(pCur, &res);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
     return TCL_ERROR;
@@ -945,6 +955,7 @@ static int btree_eof(
   const char **argv      /* Text of each argument */
 ){
   BtCursor *pCur;
+  int rc;
   char zBuf[50];
 
   if( argc!=2 ){
@@ -952,8 +963,11 @@ static int btree_eof(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
-  sqlite3_snprintf(sizeof(zBuf),zBuf, "%d", sqlite3BtreeEof(pCur));
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
+  rc = sqlite3BtreeEof(pCur);
+  sqlite3BtreeLeave(pCur->pBtree);
+  sqlite3_snprintf(sizeof(zBuf),zBuf, "%d", rc);
   Tcl_AppendResult(interp, zBuf, 0);
   return SQLITE_OK;
 }
@@ -979,8 +993,10 @@ static int btree_keysize(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   sqlite3BtreeKeySize(pCur, (i64*)&n);
+  sqlite3BtreeLeave(pCur->pBtree);
   sqlite3_snprintf(sizeof(zBuf),zBuf, "%llu", n);
   Tcl_AppendResult(interp, zBuf, 0);
   return SQLITE_OK;
@@ -1007,23 +1023,26 @@ static int btree_key(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   sqlite3BtreeKeySize(pCur, (i64*)&n);
   if( sqlite3BtreeFlags(pCur) & BTREE_INTKEY ){
     char zBuf2[60];
     sqlite3_snprintf(sizeof(zBuf2),zBuf2, "%llu", n);
     Tcl_AppendResult(interp, zBuf2, 0);
   }else{
-    zBuf = malloc( n+1 );
+    zBuf = sqlite3_malloc( n+1 );
     rc = sqlite3BtreeKey(pCur, 0, n, zBuf);
     if( rc ){
+      sqlite3BtreeLeave(pCur->pBtree);
       Tcl_AppendResult(interp, errorName(rc), 0);
       return TCL_ERROR;
     }
     zBuf[n] = 0;
     Tcl_AppendResult(interp, zBuf, 0);
-    free(zBuf);
+    sqlite3_free(zBuf);
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   return SQLITE_OK;
 }
 
@@ -1048,22 +1067,24 @@ static int btree_data(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   if( argc==2 ){
     sqlite3BtreeDataSize(pCur, &n);
   }else{
     n = atoi(argv[2]);
   }
-  zBuf = malloc( n+1 );
+  zBuf = sqlite3_malloc( n+1 );
   rc = sqlite3BtreeData(pCur, 0, n, zBuf);
+  sqlite3BtreeLeave(pCur->pBtree);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
-    free(zBuf);
+    sqlite3_free(zBuf);
     return TCL_ERROR;
   }
   zBuf[n] = 0;
   Tcl_AppendResult(interp, zBuf, 0);
-  free(zBuf);
+  sqlite3_free(zBuf);
   return SQLITE_OK;
 }
 
@@ -1091,8 +1112,9 @@ static int btree_fetch_key(
        " ID AMT\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &n) ) return TCL_ERROR;
+  sqlite3BtreeEnter(pCur->pBtree);
   sqlite3BtreeKeySize(pCur, (i64*)&nKey);
   zBuf = sqlite3BtreeKeyFetch(pCur, &amt);
   if( zBuf && amt>=n ){
@@ -1102,6 +1124,7 @@ static int btree_fetch_key(
     zStatic[nKey] = 0;
     Tcl_AppendResult(interp, zStatic, 0);
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   return TCL_OK;
 }
 
@@ -1129,8 +1152,9 @@ static int btree_fetch_data(
        " ID AMT\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &n) ) return TCL_ERROR;
+  sqlite3BtreeEnter(pCur->pBtree);
   sqlite3BtreeDataSize(pCur, &nData);
   zBuf = sqlite3BtreeDataFetch(pCur, &amt);
   if( zBuf && amt>=n ){
@@ -1140,6 +1164,7 @@ static int btree_fetch_data(
     zStatic[nData] = 0;
     Tcl_AppendResult(interp, zStatic, 0);
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   return TCL_OK;
 }
 
@@ -1164,13 +1189,15 @@ static int btree_payload_size(
        " ID\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
+  sqlite3BtreeEnter(pCur->pBtree);
   if( sqlite3BtreeFlags(pCur) & BTREE_INTKEY ){
     n1 = 0;
   }else{
     sqlite3BtreeKeySize(pCur, (i64*)&n1);
   }
   sqlite3BtreeDataSize(pCur, (u32*)&n2);
+  sqlite3BtreeLeave(pCur->pBtree);
   sqlite3_snprintf(sizeof(zBuf),zBuf, "%d", (int)(n1+n2));
   Tcl_AppendResult(interp, zBuf, 0);
   return SQLITE_OK;
@@ -1212,15 +1239,17 @@ static int btree_cursor_info(
        " ID ?UP-CNT?\"", 0);
     return TCL_ERROR;
   }
-  pCur = sqlite3TextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[1]);
   if( argc==3 ){
     if( Tcl_GetInt(interp, argv[2], &up) ) return TCL_ERROR;
   }else{
     up = 0;
   }
+  sqlite3BtreeEnter(pCur->pBtree);
   rc = sqlite3BtreeCursorInfo(pCur, aResult, up);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
+    sqlite3BtreeLeave(pCur->pBtree);
     return TCL_ERROR;
   }
   j = 0;
@@ -1228,6 +1257,7 @@ static int btree_cursor_info(
     sqlite3_snprintf(40,&zBuf[j]," %d", aResult[i]);
     j += strlen(&zBuf[j]);
   }
+  sqlite3BtreeLeave(pCur->pBtree);
   Tcl_AppendResult(interp, &zBuf[1], 0);
   return SQLITE_OK;
 }
@@ -1269,20 +1299,22 @@ static int btree_ovfl_info(
                     " BTREE CURSOR", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
-  pCur = sqlite3TextToPtr(argv[2]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  pCur = sqlite3TestTextToPtr(argv[2]);
   if( (*(void**)pCur) != (void*)pBt ){
     Tcl_AppendResult(interp, "Cursor ", argv[2], " does not belong to btree ",
        argv[1], 0);
     return TCL_ERROR;
   }
+  sqlite3BtreeEnter(pBt);
   pPager = sqlite3BtreePager(pBt);
   rc = sqlite3BtreeCursorInfo(pCur, aResult, 0);
   if( rc ){
     Tcl_AppendResult(interp, errorName(rc), 0);
+    sqlite3BtreeLeave(pBt);
     return TCL_ERROR;
   }
-  dataSize = sqlite3BtreeGetPageSize(pBt) - sqlite3BtreeGetReserve(pBt);
+  dataSize = pBt->pBt->usableSize;
   Tcl_DStringInit(&str);
   n = aResult[6] - aResult[8];
   n = (n + dataSize - 1)/dataSize;
@@ -1294,12 +1326,14 @@ static int btree_ovfl_info(
     if( sqlite3PagerGet(pPager, pgno, &pDbPage)!=SQLITE_OK ){
       Tcl_DStringFree(&str);
       Tcl_AppendResult(interp, "unable to get page ", zElem, 0);
+      sqlite3BtreeLeave(pBt);
       return TCL_ERROR;
     }
     pPage = sqlite3PagerGetData(pDbPage);
     pgno = t4Get4byte((unsigned char*)pPage);
     sqlite3PagerUnref(pDbPage);
   }
+  sqlite3BtreeLeave(pBt);
   Tcl_DStringResult(interp, &str);
   return SQLITE_OK;
 }
@@ -1325,11 +1359,11 @@ static int btree_breakpoint(
 /*
 ** usage:   varint_test  START  MULTIPLIER  COUNT  INCREMENT
 **
-** This command tests the sqlite3PutVarint() and sqlite3GetVarint()
+** This command tests the putVarint() and getVarint()
 ** routines, both for accuracy and for speed.
 **
-** An integer is written using PutVarint() and read back with
-** GetVarint() and varified to be unchanged.  This repeats COUNT
+** An integer is written using putVarint() and read back with
+** getVarint() and varified to be unchanged.  This repeats COUNT
 ** times.  The first integer is START*MULTIPLIER.  Each iteration
 ** increases the integer by INCREMENT.
 **
@@ -1359,15 +1393,15 @@ static int btree_varint_test(
   in *= mult;
   for(i=0; i<count; i++){
     char zErr[200];
-    n1 = sqlite3PutVarint(zBuf, in);
+    n1 = putVarint(zBuf, in);
     if( n1>9 || n1<1 ){
-      sprintf(zErr, "PutVarint returned %d - should be between 1 and 9", n1);
+      sprintf(zErr, "putVarint returned %d - should be between 1 and 9", n1);
       Tcl_AppendResult(interp, zErr, 0);
       return TCL_ERROR;
     }
-    n2 = sqlite3GetVarint(zBuf, &out);
+    n2 = getVarint(zBuf, &out);
     if( n1!=n2 ){
-      sprintf(zErr, "PutVarint returned %d and GetVarint returned %d", n1, n2);
+      sprintf(zErr, "putVarint returned %d and getVarint returned %d", n1, n2);
       Tcl_AppendResult(interp, zErr, 0);
       return TCL_ERROR;
     }
@@ -1378,10 +1412,10 @@ static int btree_varint_test(
     }
     if( (in & 0xffffffff)==in ){
       u32 out32;
-      n2 = sqlite3GetVarint32(zBuf, &out32);
+      n2 = getVarint32(zBuf, out32);
       out = out32;
       if( n1!=n2 ){
-        sprintf(zErr, "PutVarint returned %d and GetVarint32 returned %d", 
+        sprintf(zErr, "putVarint returned %d and GetVarint32 returned %d", 
                   n1, n2);
         Tcl_AppendResult(interp, zErr, 0);
         return TCL_ERROR;
@@ -1399,7 +1433,7 @@ static int btree_varint_test(
     ** than putVarint.
     */
     for(j=0; j<19; j++){
-      sqlite3GetVarint(zBuf, &out);
+      getVarint(zBuf, &out);
     }
     in += incr;
   }
@@ -1470,10 +1504,45 @@ static int btree_set_cache_size(
        " BT NCACHE\"", 0);
     return TCL_ERROR;
   }
-  pBt = sqlite3TextToPtr(argv[1]);
+  pBt = sqlite3TestTextToPtr(argv[1]);
   if( Tcl_GetInt(interp, argv[2], &nCache) ) return TCL_ERROR;
+
+  sqlite3_mutex_enter(pBt->db->mutex);
+  sqlite3BtreeEnter(pBt);
   sqlite3BtreeSetCacheSize(pBt, nCache);
+  sqlite3BtreeLeave(pBt);
+  sqlite3_mutex_leave(pBt->db->mutex);
+
   return TCL_OK;
+}
+
+/*
+** Usage:   btree_ismemdb ID
+**
+** Return true if the B-Tree is in-memory.
+*/
+static int btree_ismemdb(
+  void *NotUsed,
+  Tcl_Interp *interp,    /* The TCL interpreter that invoked this command */
+  int argc,              /* Number of arguments */
+  const char **argv      /* Text of each argument */
+){
+  Btree *pBt;
+  int res;
+
+  if( argc!=2 ){
+    Tcl_AppendResult(interp, "wrong # args: should be \"", argv[0],
+       " ID\"", 0);
+    return TCL_ERROR;
+  }
+  pBt = sqlite3TestTextToPtr(argv[1]);
+  sqlite3_mutex_enter(pBt->db->mutex);
+  sqlite3BtreeEnter(pBt);
+  res = sqlite3PagerIsMemdb(sqlite3BtreePager(pBt));
+  sqlite3BtreeLeave(pBt);
+  sqlite3_mutex_leave(pBt->db->mutex);
+  Tcl_SetObjResult(interp, Tcl_NewBooleanObj(res));
+  return SQLITE_OK;
 }
 
 
@@ -1481,7 +1550,6 @@ static int btree_set_cache_size(
 ** Register commands with the TCL interpreter.
 */
 int Sqlitetest3_Init(Tcl_Interp *interp){
-  extern int sqlite3_btree_trace;
   static struct {
      char *zName;
      Tcl_CmdProc *xProc;
@@ -1496,10 +1564,7 @@ int Sqlitetest3_Init(Tcl_Interp *interp){
      { "btree_clear_table",        (Tcl_CmdProc*)btree_clear_table        },
      { "btree_get_meta",           (Tcl_CmdProc*)btree_get_meta           },
      { "btree_update_meta",        (Tcl_CmdProc*)btree_update_meta        },
-     { "btree_page_dump",          (Tcl_CmdProc*)btree_page_dump          },
-     { "btree_tree_dump",          (Tcl_CmdProc*)btree_tree_dump          },
      { "btree_pager_stats",        (Tcl_CmdProc*)btree_pager_stats        },
-     { "btree_pager_ref_dump",     (Tcl_CmdProc*)btree_pager_ref_dump     },
      { "btree_cursor",             (Tcl_CmdProc*)btree_cursor             },
      { "btree_close_cursor",       (Tcl_CmdProc*)btree_close_cursor       },
      { "btree_move_to",            (Tcl_CmdProc*)btree_move_to            },
@@ -1526,16 +1591,13 @@ int Sqlitetest3_Init(Tcl_Interp *interp){
      { "btree_cursor_info",        (Tcl_CmdProc*)btree_cursor_info        },
      { "btree_ovfl_info",          (Tcl_CmdProc*)btree_ovfl_info          },
      { "btree_cursor_list",        (Tcl_CmdProc*)btree_cursor_list        },
+     { "btree_ismemdb",            (Tcl_CmdProc*)btree_ismemdb            },
   };
   int i;
 
   for(i=0; i<sizeof(aCmd)/sizeof(aCmd[0]); i++){
     Tcl_CreateCommand(interp, aCmd[i].zName, aCmd[i].xProc, 0, 0);
   }
-  Tcl_LinkVar(interp, "pager_refinfo_enable", (char*)&pager3_refinfo_enable,
-     TCL_LINK_INT);
-  Tcl_LinkVar(interp, "btree_trace", (char*)&sqlite3_btree_trace,
-     TCL_LINK_INT);
 
   /* The btree_insert command is implemented using the tcl 'object'
   ** interface, not the string interface like the other commands in this

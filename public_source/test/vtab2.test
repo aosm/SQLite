@@ -10,7 +10,7 @@
 #***********************************************************************
 # This file implements regression tests for SQLite library.
 #
-# $Id: vtab2.test,v 1.7 2007/02/14 09:19:37 danielk1977 Exp $
+# $Id: vtab2.test,v 1.9 2008/10/13 10:37:50 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -86,5 +86,51 @@ do_test vtab2-2.3 {
 } $result
 unset result
 unset var
+
+# Ticket #2894.
+#
+# Make sure we do call Column(), and Rowid() methods of
+# a virtual table when that table is in a LEFT JOIN.
+#
+do_test vtab2-3.1 {
+  execsql {
+    SELECT * FROM schema WHERE dflt_value IS NULL LIMIT 1
+  }
+} {main schema 0 database {} 0 {} 0}
+do_test vtab2-3.2 {
+  execsql {
+    SELECT *, b.rowid
+      FROM schema a LEFT JOIN schema b ON a.dflt_value=b.dflt_value
+     WHERE a.rowid=1
+  }
+} {main schema 0 database {} 0 {} 0 {} {} {} {} {} {} {} {} {}}
+
+do_test vtab2-4.1 {
+  execsql {
+    BEGIN TRANSACTION;
+    CREATE TABLE t1(a INTEGER PRIMARY KEY, b, c, UNIQUE(b, c));
+    CREATE TABLE fkey(
+      to_tbl,
+      to_col
+    );
+    INSERT INTO "fkey" VALUES('t1',NULL);
+    COMMIT;
+  }
+} {}
+do_test vtab2-4.2 {
+  execsql { CREATE VIRTUAL TABLE v_col USING schema }
+} {}
+do_test vtab2-4.3 {
+  execsql { SELECT name FROM v_col WHERE tablename = 't1' AND pk }
+} {a}
+do_test vtab2-4.4 {
+  execsql {
+    UPDATE fkey 
+    SET to_col = (SELECT name FROM v_col WHERE tablename = 't1' AND pk);
+  }
+} {}
+do_test vtab2-4.5 {
+  execsql { SELECT * FROM fkey }
+} {t1 a}
 
 finish_test

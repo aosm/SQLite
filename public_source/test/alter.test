@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this script is testing the ALTER TABLE statement.
 #
-# $Id: alter.test,v 1.25 2007/05/15 16:51:37 drh Exp $
+# $Id: alter.test,v 1.32 2009/03/24 15:08:10 drh Exp $
 #
 
 set testdir [file dirname $argv0]
@@ -37,6 +37,8 @@ ifcapable !altertable {
 # alter-2.*: Test error conditions and messages.
 # alter-3.*: Test ALTER TABLE on tables that have TRIGGERs attached to them.
 # alter-4.*: Test ALTER TABLE on tables that have AUTOINCREMENT fields.
+# ...
+# alter-12.*: Test ALTER TABLE on views.
 #
 
 # Create some tables to rename.  Be sure to include some TEMP tables
@@ -203,50 +205,52 @@ do_test alter-1.7 {
 
 # Check that ALTER TABLE works on attached databases.
 #
-do_test alter-1.8.1 {
-  file delete -force test2.db
-  file delete -force test2.db-journal
-  execsql {
-    ATTACH 'test2.db' AS aux;
-  }
-} {}
-do_test alter-1.8.2 {
-  execsql {
-    CREATE TABLE t4(a PRIMARY KEY, b, c);
-    CREATE TABLE aux.t4(a PRIMARY KEY, b, c);
-    CREATE INDEX i4 ON t4(b);
-    CREATE INDEX aux.i4 ON t4(b);
-  }
-} {}
-do_test alter-1.8.3 {
-  execsql {
-    INSERT INTO t4 VALUES('main', 'main', 'main');
-    INSERT INTO aux.t4 VALUES('aux', 'aux', 'aux');
-    SELECT * FROM t4 WHERE a = 'main';
-  }
-} {main main main}
-do_test alter-1.8.4 {
-  execsql {
-    ALTER TABLE t4 RENAME TO t5;
-    SELECT * FROM t4 WHERE a = 'aux';
-  }
-} {aux aux aux}
-do_test alter-1.8.5 {
-  execsql {
-    SELECT * FROM t5;
-  }
-} {main main main}
-do_test alter-1.8.6 {
-  execsql {
-    SELECT * FROM t5 WHERE b = 'main';
-  }
-} {main main main}
-do_test alter-1.8.7 {
-  execsql {
-    ALTER TABLE aux.t4 RENAME TO t5;
-    SELECT * FROM aux.t5 WHERE b = 'aux';
-  }
-} {aux aux aux}
+ifcapable attach {
+  do_test alter-1.8.1 {
+    file delete -force test2.db
+    file delete -force test2.db-journal
+    execsql {
+      ATTACH 'test2.db' AS aux;
+    }
+  } {}
+  do_test alter-1.8.2 {
+    execsql {
+      CREATE TABLE t4(a PRIMARY KEY, b, c);
+      CREATE TABLE aux.t4(a PRIMARY KEY, b, c);
+      CREATE INDEX i4 ON t4(b);
+      CREATE INDEX aux.i4 ON t4(b);
+    }
+  } {}
+  do_test alter-1.8.3 {
+    execsql {
+      INSERT INTO t4 VALUES('main', 'main', 'main');
+      INSERT INTO aux.t4 VALUES('aux', 'aux', 'aux');
+      SELECT * FROM t4 WHERE a = 'main';
+    }
+  } {main main main}
+  do_test alter-1.8.4 {
+    execsql {
+      ALTER TABLE t4 RENAME TO t5;
+      SELECT * FROM t4 WHERE a = 'aux';
+    }
+  } {aux aux aux}
+  do_test alter-1.8.5 {
+    execsql {
+      SELECT * FROM t5;
+    }
+  } {main main main}
+  do_test alter-1.8.6 {
+    execsql {
+      SELECT * FROM t5 WHERE b = 'main';
+    }
+  } {main main main}
+  do_test alter-1.8.7 {
+    execsql {
+      ALTER TABLE aux.t4 RENAME TO t5;
+      SELECT * FROM aux.t5 WHERE b = 'aux';
+    }
+  } {aux aux aux}
+}
 
 do_test alter-1.9.1 {
   execsql {
@@ -396,36 +400,38 @@ do_test alter-3.1.8 {
 # quoting. Otherwise the sqlite_alter_trigger() function might not work.
 file delete -force test3.db
 file delete -force test3.db-journal
-do_test alter-3.2.1 {
-  catchsql {
-    ATTACH 'test3.db' AS ON;
-  }
-} {1 {near "ON": syntax error}}
-do_test alter-3.2.2 {
-  catchsql {
-    ATTACH 'test3.db' AS 'ON';
-  }
-} {0 {}}
-do_test alter-3.2.3 {
-  catchsql {
-    CREATE TABLE ON.t1(a, b, c); 
-  }
-} {1 {near "ON": syntax error}}
-do_test alter-3.2.4 {
-  catchsql {
-    CREATE TABLE 'ON'.t1(a, b, c); 
-  }
-} {0 {}}
-do_test alter-3.2.4 {
-  catchsql {
-    CREATE TABLE 'ON'.ON(a, b, c); 
-  }
-} {1 {near "ON": syntax error}}
-do_test alter-3.2.5 {
-  catchsql {
-    CREATE TABLE 'ON'.'ON'(a, b, c); 
-  }
-} {0 {}}
+ifcapable attach {
+  do_test alter-3.2.1 {
+    catchsql {
+      ATTACH 'test3.db' AS ON;
+    }
+  } {1 {near "ON": syntax error}}
+  do_test alter-3.2.2 {
+    catchsql {
+      ATTACH 'test3.db' AS 'ON';
+    }
+  } {0 {}}
+  do_test alter-3.2.3 {
+    catchsql {
+      CREATE TABLE ON.t1(a, b, c); 
+    }
+  } {1 {near "ON": syntax error}}
+  do_test alter-3.2.4 {
+    catchsql {
+      CREATE TABLE 'ON'.t1(a, b, c); 
+    }
+  } {0 {}}
+  do_test alter-3.2.4 {
+    catchsql {
+      CREATE TABLE 'ON'.ON(a, b, c); 
+    }
+  } {1 {near "ON": syntax error}}
+  do_test alter-3.2.5 {
+    catchsql {
+      CREATE TABLE 'ON'.'ON'(a, b, c); 
+    }
+  } {0 {}}
+}
 do_test alter-3.2.6 {
   catchsql {
     CREATE TABLE t10(a, ON, c);
@@ -441,11 +447,13 @@ do_test alter-3.2.8 {
     CREATE TRIGGER trig4 AFTER INSERT ON ON BEGIN SELECT 1; END;
   }
 } {1 {near "ON": syntax error}}
-do_test alter-3.2.9 {
-  catchsql {
-    CREATE TRIGGER 'on'.trig4 AFTER INSERT ON 'ON' BEGIN SELECT 1; END;
-  }
-} {0 {}}
+ifcapable attach {
+  do_test alter-3.2.9 {
+    catchsql {
+      CREATE TRIGGER 'on'.trig4 AFTER INSERT ON 'ON' BEGIN SELECT 1; END;
+    }
+  } {0 {}}
+}
 do_test alter-3.2.10 {
   execsql {
     DROP TABLE t10;
@@ -588,7 +596,7 @@ do_test alter-6.3 {
   execsql "
     SELECT sql FROM sqlite_master WHERE oid = $::oid
   "
-} "{CREATE TABLE '${::tbl_name2}'(a, b, c)}"
+} "{CREATE TABLE \"${::tbl_name2}\"(a, b, c)}"
 do_test alter-6.4 {
   execsql "
     ALTER TABLE $::tbl_name2 RENAME TO $::tbl_name
@@ -596,7 +604,7 @@ do_test alter-6.4 {
   execsql "
     SELECT sql FROM sqlite_master WHERE oid = $::oid
   "
-} "{CREATE TABLE '${::tbl_name}'(a, b, c)}"
+} "{CREATE TABLE \"${::tbl_name}\"(a, b, c)}"
 set ::col_name ghi\1234\jkl
 do_test alter-6.5 {
   execsql "
@@ -605,7 +613,7 @@ do_test alter-6.5 {
   execsql "
     SELECT sql FROM sqlite_master WHERE oid = $::oid
   "
-} "{CREATE TABLE '${::tbl_name}'(a, b, c, $::col_name VARCHAR)}"
+} "{CREATE TABLE \"${::tbl_name}\"(a, b, c, $::col_name VARCHAR)}"
 set ::col_name2 B\3421\A
 do_test alter-6.6 {
   db close
@@ -616,7 +624,7 @@ do_test alter-6.6 {
   execsql "
     SELECT sql FROM sqlite_master WHERE oid = $::oid
   "
-} "{CREATE TABLE '${::tbl_name}'(a, b, c, $::col_name VARCHAR, $::col_name2)}"
+} "{CREATE TABLE \"${::tbl_name}\"(a, b, c, $::col_name VARCHAR, $::col_name2)}"
 do_test alter-6.7 {
   execsql "
     INSERT INTO ${::tbl_name} VALUES(1, 2, 3, 4, 5);
@@ -632,10 +640,10 @@ do_test alter-7.1 {
     CREATE TABLE t1(a TEXT COLLATE BINARY);
     ALTER TABLE t1 ADD COLUMN b INTEGER COLLATE NOCASE;
     INSERT INTO t1 VALUES(1,'-2');
-    INSERT INTO t1 VALUES(5.4e-8,'5.4e-8');
+    INSERT INTO t1 VALUES(5.4e-08,'5.4e-08');
     SELECT typeof(a), a, typeof(b), b FROM t1;
   }
-} {text 1 integer -2 text 5.4e-8 real 5.4e-08}
+} {text 1 integer -2 text 5.4e-08 real 5.4e-08}
 
 # Make sure that when a column is added by ALTER TABLE ADD COLUMN and has
 # a default value that the default value is used by aggregate functions.
@@ -669,7 +677,7 @@ do_test alter-9.2 {
   execsql {
     SELECT SQLITE_RENAME_TABLE(0,0);
     SELECT SQLITE_RENAME_TABLE(10,20);
-    SELECT SQLITE_RENAME_TABLE("foo", "foo");
+    SELECT SQLITE_RENAME_TABLE('foo', 'foo');
   }
 } {{} {} {}}
 
@@ -751,6 +759,70 @@ if {!$isutf16} {
     sqlite3_exec db {SELECT "%81%82%83" AS xyz, abc FROM t11c}
   } {0 {xyz abc 5 6}}
 }
+
+do_test alter-12.1 {
+  execsql {
+    CREATE TABLE t12(a, b, c);
+    CREATE VIEW v1 AS SELECT * FROM t12;
+  }
+} {}
+do_test alter-12.2 {
+  catchsql {
+    ALTER TABLE v1 RENAME TO v2;
+  }
+} {1 {view v1 may not be altered}}
+do_test alter-12.3 {
+  execsql { SELECT * FROM v1; }
+} {}
+do_test alter-12.4 {
+  db close
+  sqlite3 db test.db
+  execsql { SELECT * FROM v1; }
+} {}
+do_test alter-12.5 {
+  catchsql { 
+    ALTER TABLE v1 ADD COLUMN new_column;
+  }
+} {1 {Cannot add a column to a view}}
+
+# Ticket #3102:
+# Verify that comments do not interfere with the table rename
+# algorithm.
+#
+do_test alter-13.1 {
+  execsql {
+    CREATE TABLE /* hi */ t3102a(x);
+    CREATE TABLE t3102b -- comment
+    (y);
+    CREATE INDEX t3102c ON t3102a(x);
+    SELECT name FROM sqlite_master WHERE name LIKE 't3102%' ORDER BY 1;
+  }
+} {t3102a t3102b t3102c}
+do_test alter-13.2 {
+  execsql {
+    ALTER TABLE t3102a RENAME TO t3102a_rename;
+    SELECT name FROM sqlite_master WHERE name LIKE 't3102%' ORDER BY 1;
+  }
+} {t3102a_rename t3102b t3102c}
+do_test alter-13.3 {
+  execsql {
+    ALTER TABLE t3102b RENAME TO t3102b_rename;
+    SELECT name FROM sqlite_master WHERE name LIKE 't3102%' ORDER BY 1;
+  }
+} {t3102a_rename t3102b_rename t3102c}
+
+# Ticket #3651
+do_test alter-14.1 {
+  catchsql {
+    CREATE TABLE t3651(a UNIQUE);
+    ALTER TABLE t3651 ADD COLUMN b UNIQUE;
+  }
+} {1 {Cannot add a UNIQUE column}}
+do_test alter-14.2 {
+  catchsql {
+    ALTER TABLE t3651 ADD COLUMN b PRIMARY KEY;
+  }
+} {1 {Cannot add a PRIMARY KEY column}}
 
 
 finish_test

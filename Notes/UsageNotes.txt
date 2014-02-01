@@ -1,0 +1,4 @@
+
+# Miscellaneous notes about using sqlite
+
+- Please observe the restriction that virtual tables and shared cache cannot be used at the same time. (RTree uses on virtual tables)

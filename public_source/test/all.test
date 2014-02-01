@@ -10,19 +10,20 @@
 #***********************************************************************
 # This file runs all tests.
 #
-# $Id: all.test,v 1.44 2007/06/18 12:22:43 drh Exp $
+# $Id: all.test,v 1.62 2009/01/06 18:43:51 drh Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 rename finish_test really_finish_test
 proc finish_test {} {
-  memleak_check
+  catch {db close}
+  show_memstats
 }
 
 if {[file exists ./sqlite_test_count]} {
   set COUNT [exec cat ./sqlite_test_count]
 } else {
-  set COUNT 3
+  set COUNT 1
 }
 
 if {[llength $argv]>0} {
@@ -52,20 +53,20 @@ set argv {}
 #
 set LeakList {}
 
-set EXCLUDE {
-  all.test
-  async.test
-  crash.test
-  crash2.test
-  autovacuum_crash.test
-  quick.test
-  malloc.test
-  misuse.test
-  memleak.test
-  sqllimits1.test
-  fuzz.test
-  soak.test
-}
+set EXCLUDE {}
+lappend EXCLUDE all.test               ;# This file
+lappend EXCLUDE async.test
+lappend EXCLUDE crash.test             ;# Run seperately later.
+lappend EXCLUDE crash2.test            ;# Run seperately later.
+lappend EXCLUDE quick.test             ;# Alternate test driver script
+lappend EXCLUDE veryquick.test         ;# Alternate test driver script
+lappend EXCLUDE malloc.test            ;# Run seperately later.
+lappend EXCLUDE misuse.test            ;# Run seperately later.
+lappend EXCLUDE memleak.test           ;# Alternate test driver script
+lappend EXCLUDE permutations.test      ;# Run seperately later.
+lappend EXCLUDE soak.test              ;# Takes a very long time (default 1 hr)
+lappend EXCLUDE fts3.test              ;# Wrapper for muliple fts3*.tests
+lappend EXCLUDE mallocAll.test         ;# Wrapper for running all malloc tests
 
 # Files to include in the test.  If this list is empty then everything
 # that is not in the EXCLUDE list is run.
@@ -73,25 +74,12 @@ set EXCLUDE {
 set INCLUDE {
 }
 
-# Test files btree2.test and btree4.test don't work if the 
-# SQLITE_DEFAULT_AUTOVACUUM macro is defined to true (because they depend
-# on tables being allocated starting at page 2).
-#
-ifcapable default_autovacuum {
-  lappend EXCLUDE btree2.test
-  lappend EXCLUDE btree4.test
-}
-
 for {set Counter 0} {$Counter<$COUNT && $nErr==0} {incr Counter} {
-  if {$Counter%2} {
-    set ::SETUP_SQL {PRAGMA default_synchronous=off;}
-  } else {
-    catch {unset ::SETUP_SQL}
-  }
   foreach testfile [lsort -dictionary [glob $testdir/*.test]] {
     set tail [file tail $testfile]
     if {[lsearch -exact $EXCLUDE $tail]>=0} continue
     if {[llength $INCLUDE]>0 && [lsearch -exact $INCLUDE $tail]<0} continue
+    reset_prng_state
     source $testfile
     catch {db close}
     if {$sqlite_open_file_count>0} {
@@ -100,17 +88,14 @@ for {set Counter 0} {$Counter<$COUNT && $nErr==0} {incr Counter} {
       lappend ::failList $tail
       set sqlite_open_file_count 0
     }
-    if {$::sqlite3_tsd_count} {
-      puts "Thread-specific data leak: $::sqlite3_tsd_count instances"
-      incr nErr
-      lappend ::failList $tail
-      set ::sqlite3_tsd_count 0
-    }
   }
   if {[info exists Leak]} {
     lappend LeakList $Leak
   }
 }
+set argv all
+source $testdir/permutations.test
+set argv ""
 
 # Do one last test to look for a memory leak in the library.  This will
 # only work if SQLite is compiled with the -DSQLITE_DEBUG=1 flag.
@@ -138,7 +123,9 @@ if {$::tcl_platform(platform)=="unix"} {
   source $testdir/crash.test
   source $testdir/crash2.test
   ifcapable !default_autovacuum {
-    source $testdir/autovacuum_crash.test
+    set argv autovacuum_crash
+    source $testdir/permutations.test
+    set argv ""
   }
 }
 

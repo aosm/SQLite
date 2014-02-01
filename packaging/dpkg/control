@@ -1,0 +1,7 @@
+Package: SQLite
+Maintainer: Darwin Developers <darwin-development@public.lists.apple.com>
+Vendor: Hwaci
+Version: 3.6.10
+URL: http://www.sqlite.org/
+Build-Depends: build-base
+Description: SQLite public domain database

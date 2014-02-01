@@ -9,13 +9,15 @@
 #
 #***********************************************************************
 #
-# $Id: shared.test,v 1.24 2007/05/05 18:39:25 drh Exp $
+# $Id: shared.test,v 1.36 2009/03/16 13:19:36 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 db close
 
-ifcapable !shared_cache {
+# These tests cannot be run without the ATTACH command.
+#
+ifcapable !shared_cache||!attach {
   finish_test
   return
 }
@@ -39,6 +41,20 @@ ifcapable autovacuum {
     break
   }
 }
+
+# if we're using proxy locks, we use 2 filedescriptors for a db
+# that is open but NOT yet locked, after a lock is taken we'll have 3, 
+# normally sqlite uses 1 (proxy locking adds the conch and the local lock)
+set using_proxy 0
+foreach {name value} [array get env SQLITE_FORCE_PROXY_LOCKING] {
+  set using_proxy $value
+}
+set extrafds_prelock 0
+set extrafds_postlock 0
+if {$using_proxy>0} {
+  set extrafds_prelock 1
+  set extrafds_postlock 2
+} 
 
 # $av is currently 0 if this loop iteration is to test with auto-vacuum turned
 # off, and 1 if it is turned on. Increment it so that (1 -> no auto-vacuum) 
@@ -72,6 +88,7 @@ do_test shared-$av.1.1 {
   # opened.
   sqlite3 db2 test.db
   set ::sqlite_open_file_count
+  expr $sqlite_open_file_count-$extrafds_postlock
 } {1}
 do_test shared-$av.1.2 {
   # Add a table and a single row of data via the first connection. 
@@ -152,6 +169,7 @@ do_test shared-$av.2.1 {
     sqlite3 db3 TEST.DB
   }
   set ::sqlite_open_file_count
+  expr $sqlite_open_file_count-($extrafds_prelock+$extrafds_postlock)
 } {2}
 do_test shared-$av.2.2 {
   # Start read transactions on db and db2 (the shared pager cache). Ensure
@@ -282,14 +300,17 @@ sqlite3 db  test.db
 sqlite3 db2 test2.db
 do_test shared-$av.4.1.1 {
   set sqlite_open_file_count
+  expr $sqlite_open_file_count-($extrafds_prelock*2)
 } {2}
 do_test shared-$av.4.1.2 {
   execsql {ATTACH 'test2.db' AS test2}
   set sqlite_open_file_count
+  expr $sqlite_open_file_count-($extrafds_postlock*2)
 } {2}
 do_test shared-$av.4.1.3 {
   execsql {ATTACH 'test.db' AS test} db2
   set sqlite_open_file_count
+  expr $sqlite_open_file_count-($extrafds_postlock*2)
 } {2}
 
 # Sanity check: Create a table in ./test.db via handle db, and test that handle
@@ -572,7 +593,7 @@ do_test shared-$av.7.1 {
 } {}
 do_test shared-$av.7.2 {
   # This test case deletes the contents of table t1 (the one at the start of
-  # the file) while many cursors are open on table t2 and it's index. All of
+  # the file) while many cursors are open on table t2 and its index. All of
   # the non-root pages will be moved from the end to the start of the file
   # when the DELETE is committed - this test verifies that moving the pages
   # does not disturb the open cursors.
@@ -634,6 +655,7 @@ ifcapable utf16 {
   do_test shared-$av.8.1.2 {
     string range [execsql {PRAGMA encoding;}] 0 end-2
   } {UTF-16}
+
   do_test shared-$av.8.1.3 {
     sqlite3 db2 test.db
     execsql {
@@ -652,6 +674,7 @@ ifcapable utf16 {
       PRAGMA encoding;
     }
   } {UTF-8}
+
   file delete -force test2.db test2.db-journal
   do_test shared-$av.8.2.1 {
     execsql {
@@ -667,11 +690,44 @@ ifcapable utf16 {
     } db2
     string range [execsql {PRAGMA encoding;} db2] 0 end-2
   } {UTF-16}
+
+  catch {db close}
+  catch {db2 close}
+  file delete -force test.db test2.db
+
+  do_test shared-$av.8.3.2 {
+    sqlite3 db test.db
+    execsql { CREATE TABLE def(d, e, f) }
+    execsql { PRAGMA encoding }
+  } {UTF-8}
+  do_test shared-$av.8.3.3 {
+    set zDb16 "[encoding convertto unicode test.db]\x00\x00"
+    set db16 [sqlite3_open16 $zDb16 {}]
+
+    set stmt [sqlite3_prepare $db16 "SELECT sql FROM sqlite_master" -1 DUMMY]
+    sqlite3_step $stmt
+    set sql [sqlite3_column_text $stmt 0]
+    sqlite3_finalize $stmt
+    set sql
+  } {CREATE TABLE def(d, e, f)}
+  do_test shared-$av.8.3.4 {
+    set stmt [sqlite3_prepare $db16 "PRAGMA encoding" -1 DUMMY]
+    sqlite3_step $stmt
+    set enc [sqlite3_column_text $stmt 0]
+    sqlite3_finalize $stmt
+    set enc
+  } {UTF-8}
+
+  sqlite3_close $db16
+
+# Bug #2547 is causing this to fail.
+if 0 {
   do_test shared-$av.8.2.3 {
     catchsql {
       SELECT * FROM aux.sqlite_master;
     }
   } {1 {attached databases must use the same text encoding as main database}}
+}
 }
 
 catch {db close}
@@ -819,7 +875,7 @@ do_test shared-$av.11.4 {
 } {0 {}}
 do_test shared-$av.11.5 {
   catchsql {INSERT INTO abc2 VALUES(1, 2, 3);} db2
-} {1 {database is locked}}
+} {1 {database table is locked}}
 do_test shared-$av.11.6 {
   catchsql {SELECT * FROM abc2}
 } {0 {}}
@@ -837,7 +893,6 @@ do_test shared-$av.11.7 {
 } {}
 do_test shared-$av.11.8 {
   set res [list]
-  breakpoint
   db2 eval {
     SELECT abc.a as I, abc2.a as II FROM abc, abc2;
   } {
@@ -850,13 +905,117 @@ do_test shared-$av.11.8 {
 } {1 4 {} 7}
 if {[llength [info command sqlite3_shared_cache_report]]==1} {
   do_test shared-$av.11.9 {
-    sqlite3_shared_cache_report 
-  } [list [file normalize test.db] 2]
+    string tolower [sqlite3_shared_cache_report]
+  } [string tolower [list [file nativename [file normalize test.db]] 2]]
 }
 
 do_test shared-$av.11.11 {
   db close
   db2 close
+} {}
+
+# This tests that if it is impossible to free any pages, SQLite will
+# exceed the limit set by PRAGMA cache_size.
+file delete -force test.db test.db-journal
+sqlite3 db test.db 
+ifcapable pager_pragmas {
+  do_test shared-$av.12.1 {
+    execsql {
+      PRAGMA cache_size = 10;
+      PRAGMA cache_size;
+    }
+  } {10}
+}
+do_test shared-$av.12.2 {
+  set ::db_handles [list]
+  for {set i 1} {$i < 15} {incr i} {
+    lappend ::db_handles db$i
+    sqlite3 db$i test.db 
+    execsql "CREATE TABLE db${i}(a, b, c)" db$i 
+    execsql "INSERT INTO db${i} VALUES(1, 2, 3)"
+  }
+} {}
+proc nested_select {handles} {
+  [lindex $handles 0] eval "SELECT * FROM [lindex $handles 0]" {
+    lappend ::res $a $b $c
+    if {[llength $handles]>1} {
+      nested_select [lrange $handles 1 end]
+    }
+  }
+}
+do_test shared-$av.12.3 {
+  set ::res [list]
+  nested_select $::db_handles
+  set ::res
+} [string range [string repeat "1 2 3 " [llength $::db_handles]] 0 end-1]
+
+do_test shared-$av.12.X {
+  db close
+  foreach h $::db_handles { 
+    $h close
+  }
+} {}
+
+# Internally, locks are acquired on shared B-Tree structures in the order
+# that the structures appear in the virtual memory address space. This
+# test case attempts to cause the order of the structures in memory 
+# to be different from the order in which they are attached to a given
+# database handle. This covers an extra line or two.
+#
+do_test shared-$av.13.1 {
+  file delete -force test2.db test3.db test4.db test5.db
+  sqlite3 db :memory:
+  execsql {
+    ATTACH 'test2.db' AS aux2;
+    ATTACH 'test3.db' AS aux3;
+    ATTACH 'test4.db' AS aux4;
+    ATTACH 'test5.db' AS aux5;
+    DETACH aux2;
+    DETACH aux3;
+    DETACH aux4;
+    ATTACH 'test2.db' AS aux2;
+    ATTACH 'test3.db' AS aux3;
+    ATTACH 'test4.db' AS aux4;
+  }
+} {}
+do_test shared-$av.13.2 {
+  execsql {
+    CREATE TABLE t1(a, b, c);
+    CREATE TABLE aux2.t2(a, b, c);
+    CREATE TABLE aux3.t3(a, b, c);
+    CREATE TABLE aux4.t4(a, b, c);
+    CREATE TABLE aux5.t5(a, b, c);
+    SELECT count(*) FROM 
+      aux2.sqlite_master, 
+      aux3.sqlite_master, 
+      aux4.sqlite_master, 
+      aux5.sqlite_master
+  }
+} {1}
+do_test shared-$av.13.3 {
+  db close
+} {}
+
+# Test that nothing horrible happens if a connection to a shared B-Tree 
+# structure is closed while some other connection has an open cursor.
+#
+do_test shared-$av.14.1 {
+  sqlite3 db test.db
+  sqlite3 db2 test.db
+  execsql {SELECT name FROM sqlite_master}
+} {db1 db2 db3 db4 db5 db6 db7 db8 db9 db10 db11 db12 db13 db14}
+do_test shared-$av.14.2 {
+  set res [list]
+  db eval {SELECT name FROM sqlite_master} {
+    if {$name eq "db7"} {
+      db2 close
+    }
+    lappend res $name
+  }
+  set res
+} {db1 db2 db3 db4 db5 db6 db7 db8 db9 db10 db11 db12 db13 db14}
+do_test shared-$av.14.3 {
+  db close
 } {}
 
 }

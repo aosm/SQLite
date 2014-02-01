@@ -14,12 +14,10 @@
 ** other files are for internal use by SQLite and should not be
 ** accessed by users of the library.
 **
-** $Id: legacy.c,v 1.18 2007/05/04 13:15:56 drh Exp $
+** $Id: legacy.c,v 1.32 2009/03/19 18:51:07 danielk1977 Exp $
 */
 
 #include "sqliteInt.h"
-#include "os.h"
-#include <ctype.h>
 
 /*
 ** Execute SQL code.  Return one of the SQLITE_ success/failure
@@ -46,7 +44,10 @@ int sqlite3_exec(
   int nRetry = 0;
   int nCallback;
 
-  if( zSql==0 ) return SQLITE_OK;
+  if( zSql==0 ) zSql = "";
+
+  sqlite3_mutex_enter(db->mutex);
+  sqlite3Error(db, SQLITE_OK, 0);
   while( (rc==SQLITE_OK || (rc==SQLITE_SCHEMA && (++nRetry)<2)) && zSql[0] ){
     int nCol;
     char **azVals = 0;
@@ -64,12 +65,7 @@ int sqlite3_exec(
     }
 
     nCallback = 0;
-
     nCol = sqlite3_column_count(pStmt);
-    azCols = sqliteMalloc(2*nCol*sizeof(const char *) + 1);
-    if( azCols==0 ){
-      goto exec_out;
-    }
 
     while( 1 ){
       int i;
@@ -79,8 +75,17 @@ int sqlite3_exec(
       if( xCallback && (SQLITE_ROW==rc || 
           (SQLITE_DONE==rc && !nCallback && db->flags&SQLITE_NullCallback)) ){
         if( 0==nCallback ){
+          if( azCols==0 ){
+            azCols = sqlite3DbMallocZero(db, 2*nCol*sizeof(const char*) + 1);
+            if( azCols==0 ){
+              goto exec_out;
+            }
+          }
           for(i=0; i<nCol; i++){
             azCols[i] = (char *)sqlite3_column_name(pStmt, i);
+            /* sqlite3VdbeSetColName() installs column names as UTF8
+            ** strings so there is no way for sqlite3_column_name() to fail. */
+            assert( azCols[i]!=0 );
           }
           nCallback++;
         }
@@ -88,38 +93,45 @@ int sqlite3_exec(
           azVals = &azCols[nCol];
           for(i=0; i<nCol; i++){
             azVals[i] = (char *)sqlite3_column_text(pStmt, i);
+            if( !azVals[i] && sqlite3_column_type(pStmt, i)!=SQLITE_NULL ){
+              db->mallocFailed = 1;
+              goto exec_out;
+            }
           }
         }
         if( xCallback(pArg, nCol, azVals, azCols) ){
           rc = SQLITE_ABORT;
+          sqlite3VdbeFinalize((Vdbe *)pStmt);
+          pStmt = 0;
+          sqlite3Error(db, SQLITE_ABORT, 0);
           goto exec_out;
         }
       }
 
       if( rc!=SQLITE_ROW ){
-        rc = sqlite3_finalize(pStmt);
+        rc = sqlite3VdbeFinalize((Vdbe *)pStmt);
         pStmt = 0;
         if( rc!=SQLITE_SCHEMA ){
           nRetry = 0;
           zSql = zLeftover;
-          while( isspace((unsigned char)zSql[0]) ) zSql++;
+          while( sqlite3Isspace(zSql[0]) ) zSql++;
         }
         break;
       }
     }
 
-    sqliteFree(azCols);
+    sqlite3DbFree(db, azCols);
     azCols = 0;
   }
 
 exec_out:
-  if( pStmt ) sqlite3_finalize(pStmt);
-  if( azCols ) sqliteFree(azCols);
+  if( pStmt ) sqlite3VdbeFinalize((Vdbe *)pStmt);
+  sqlite3DbFree(db, azCols);
 
-  rc = sqlite3ApiExit(0, rc);
+  rc = sqlite3ApiExit(db, rc);
   if( rc!=SQLITE_OK && rc==sqlite3_errcode(db) && pzErrMsg ){
-    int nErrMsg = 1 + strlen(sqlite3_errmsg(db));
-    *pzErrMsg = sqlite3_malloc(nErrMsg);
+    int nErrMsg = 1 + sqlite3Strlen30(sqlite3_errmsg(db));
+    *pzErrMsg = sqlite3Malloc(nErrMsg);
     if( *pzErrMsg ){
       memcpy(*pzErrMsg, sqlite3_errmsg(db), nErrMsg);
     }
@@ -128,5 +140,6 @@ exec_out:
   }
 
   assert( (rc&db->errMask)==rc );
+  sqlite3_mutex_leave(db->mutex);
   return rc;
 }

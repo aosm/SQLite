@@ -6,19 +6,17 @@
 #
 set VERSION [lindex $argv 0]
 set LIBFILE .libs/libtclsqlite3[info sharedlibextension]
-if {$argc > 1} {
-	set LIBDIR [lindex $argv 1]
-} else {
-	if { ![info exists env(DESTDIR)] } { set env(DESTDIR) "" }
-	set LIBDIR $env(DESTDIR)[lindex $auto_path 0]
-}
+if { ![info exists env(DSTROOT)] } { set env(DSTROOT) "" }
+if { ![info exists env(TCLLIBDIR)] } { set env(TCLLIBDIR) [lindex $auto_path 0] }
+set LIBDIR $env(DSTROOT)$env(TCLLIBDIR)
 set LIBNAME [file tail $LIBFILE]
 set LIB $LIBDIR/sqlite3/$LIBNAME
 
 file delete -force $LIBDIR/sqlite3
+puts "Libdir is $LIBDIR"
 file mkdir $LIBDIR/sqlite3
 set fd [open $LIBDIR/sqlite3/pkgIndex.tcl w]
-puts $fd "package ifneeded sqlite3 $VERSION \[list load \[file join \$dir libtclsqlite3.dylib\] Tclsqlite3\]"
+puts $fd "package ifneeded sqlite3 $VERSION \[list load \[file join \$dir $LIBNAME\] Tclsqlite3\]"
 close $fd
 
 # We cannot use [file copy] because that will just make a copy of

@@ -11,6 +11,8 @@
 ** them.  Compute a second MD5-checksum of the file and verify that the
 ** two checksums are the same.  Such is the original use of this code.
 ** New uses may have been added since this comment was written.
+**
+** $Id: test_md5.c,v 1.10 2009/02/03 19:52:59 shane Exp $
 */
 /*
  * This code implements the MD5 message-digest algorithm.
@@ -168,7 +170,7 @@ static void MD5Transform(uint32 buf[4], const uint32 in[16]){
  * initialization constants.
  */
 static void MD5Init(MD5Context *ctx){
-	ctx->isInit = 1;
+        ctx->isInit = 1;
         ctx->buf[0] = 0x67452301;
         ctx->buf[1] = 0xefcdab89;
         ctx->buf[2] = 0x98badcfe;
@@ -269,7 +271,7 @@ static void MD5Final(unsigned char digest[16], MD5Context *pCtx){
         MD5Transform(ctx->buf, (uint32 *)ctx->in);
         byteReverse((unsigned char *)ctx->buf, 4);
         memcpy(digest, ctx->buf, 16);
-        memset(ctx, 0, sizeof(ctx));    /* In case it's sensitive */
+        memset(ctx, 0, sizeof(ctx));    /* In case it is sensitive */
 }
 
 /*
@@ -297,6 +299,7 @@ static void DigestToBase16(unsigned char *digest, char *zBuf){
 static int md5_cmd(void*cd, Tcl_Interp *interp, int argc, const char **argv){
   MD5Context ctx;
   unsigned char digest[16];
+  char zBuf[33];
 
   if( argc!=2 ){
     Tcl_AppendResult(interp,"wrong # args: should be \"", argv[0], 
@@ -306,7 +309,8 @@ static int md5_cmd(void*cd, Tcl_Interp *interp, int argc, const char **argv){
   MD5Init(&ctx);
   MD5Update(&ctx, (unsigned char*)argv[1], (unsigned)strlen(argv[1]));
   MD5Final(digest, &ctx);
-  DigestToBase16(digest, interp->result);
+  DigestToBase16(digest, zBuf);
+  Tcl_AppendResult(interp, zBuf, (char*)0);
   return TCL_OK;
 }
 
@@ -340,7 +344,8 @@ static int md5file_cmd(void*cd, Tcl_Interp*interp, int argc, const char **argv){
   }
   fclose(in);
   MD5Final(digest, &ctx);
-  DigestToBase16(digest, interp->result);
+  DigestToBase16(digest, zBuf);
+  Tcl_AppendResult(interp, zBuf, (char*)0);
   return TCL_OK;
 }
 
@@ -382,7 +387,9 @@ static void md5finalize(sqlite3_context *context){
   DigestToBase16(digest, zBuf);
   sqlite3_result_text(context, zBuf, -1, SQLITE_TRANSIENT);
 }
-void Md5_Register(sqlite3 *db){
-  sqlite3_create_function(db, "md5sum", -1, SQLITE_UTF8, 0, 0, 
-      md5step, md5finalize);
+int Md5_Register(sqlite3 *db){
+  int rc = sqlite3_create_function(db, "md5sum", -1, SQLITE_UTF8, 0, 0, 
+                                 md5step, md5finalize);
+  sqlite3_overload_function(db, "md5sum", -1);  /* To exercise this API */
+  return rc;
 }

@@ -10,12 +10,12 @@
 #***********************************************************************
 # This file implements regression tests for SQLite library.
 #
-# $Id: misc7.test,v 1.13 2007/04/25 15:42:26 drh Exp $
+# $Id: misc7.test,v 1.28 2009/02/10 05:45:42 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 
-do_test misc7-1 {
+do_test misc7-1-misuse {
   c_misuse_test
 } {}
 
@@ -38,7 +38,7 @@ do_test misc7-4 {
   list $rc $msg
 } {1 {unable to open database file}}
 
-# Try to open a file with a directory where it's journal file should be.
+# Try to open a file with a directory where its journal file should be.
 #
 do_test misc7-5 {
   file delete mydir
@@ -166,6 +166,22 @@ do_test misc7-7.2 {
     DETACH aux;
   }
 } {}
+do_test misc7-7.3 {
+  db close
+  sqlite3 db test.db -readonly 1
+  execsql {
+    PRAGMA omit_readlock = 1;
+    ATTACH 'test2.db' AS aux;
+    SELECT name FROM aux.sqlite_master;
+    SELECT name FROM aux.sqlite_master;
+  }
+} {hello hello}
+do_test misc7-7.3 {
+  db close
+  sqlite3 db test.db
+  set ::DB [sqlite3_connection_pointer db]
+  list
+} {}
 
 # Test the UTF-16 version of the "out of memory" message (used when
 # malloc fails during sqlite3_open() ).
@@ -243,7 +259,7 @@ file delete -force test.db-journal
 sqlite3 db test.db
 
 ifcapable explain {
-  do_test misc7-14 {
+  do_test misc7-14.1 {
     execsql {
       CREATE TABLE abc(a PRIMARY KEY, b, c);
     }
@@ -251,11 +267,16 @@ ifcapable explain {
       EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE rowid = 1;
     }
   } {0 0 {TABLE abc AS t2 USING PRIMARY KEY}}
-  do_test misc7-15 {
+  do_test misc7-14.2 {
     execsql {
       EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 WHERE a = 1;
     }
   } {0 0 {TABLE abc AS t2 WITH INDEX sqlite_autoindex_abc_1}}
+  do_test misc7-14.3 {
+    execsql {
+      EXPLAIN QUERY PLAN SELECT * FROM abc AS t2 ORDER BY a;
+    }
+  } {0 0 {TABLE abc AS t2 WITH INDEX sqlite_autoindex_abc_1 ORDER BY}}
 }
 
 db close
@@ -362,58 +383,117 @@ set sqlite_pager_n_sort_bucket 0
 # These tests do not work on windows due to restrictions in the
 # windows file system.
 #
-if {$tcl_platform(platform)!="windows"} {
-do_test misc7-17.1 {
-  execsql {
-    BEGIN;
-    DELETE FROM t3 WHERE (oid%3)==0;
-  }
-  copy_file test.db bak.db
-  copy_file test.db-journal bak.db-journal
-  execsql {
-    COMMIT;
-  }
+if {$tcl_platform(platform)!="windows" && $tcl_platform(platform)!="os2"} {
 
-  db close
-  copy_file bak.db test.db
-  copy_file bak.db-journal test.db-journal
-  sqlite3 db test.db
+  # Some network filesystems (ex: AFP) do not support setting read-only
+  # permissions.  Only run these tests if full unix permission setting
+  # capabilities are supported.
+  #
+  file attributes test.db -permissions rw-r--r--
+  if {[file attributes test.db -permissions]==0644} {
 
-  catch {file attributes test.db-journal -permissions r--------}
-  catch {file attributes test.db-journal -readonly 1}
-  catchsql {
-    SELECT count(*) FROM t3;
+    do_test misc7-17.1 {
+      execsql {
+        BEGIN;
+        DELETE FROM t3 WHERE (oid%3)==0;
+      }
+      copy_file test.db bak.db
+      copy_file test.db-journal bak.db-journal
+      execsql {
+        COMMIT;
+      }
+    
+      db close
+      copy_file bak.db test.db
+      copy_file bak.db-journal test.db-journal
+      sqlite3 db test.db
+    
+      catch {file attributes test.db-journal -permissions r--------}
+      catch {file attributes test.db-journal -readonly 1}
+      catchsql {
+        SELECT count(*) FROM t3;
+      }
+    } {1 {unable to open database file}}
+    do_test misc7-17.2 {
+      # Note that the -readonly flag must be cleared before the -permissions
+      # are set. Otherwise, when using tcl 8.5 on mac, the fact that the 
+      # -readonly flag is set causes the attempt to set the permissions
+      # to fail.
+      catch {file attributes test.db-journal -readonly 0}
+      catch {file attributes test.db-journal -permissions rw-------}
+      catchsql {
+        SELECT count(*) FROM t3;
+      }
+    } {0 32}
+    
+    # sqlite3_test_control_pending_page [expr ($::sqlite_pending_byte / 1024) + 1]
+    set ::pending_byte_page [expr ($::sqlite_pending_byte / 1024) + 1]
+    sqlite3_test_control_pending_byte $::sqlite_pending_byte 
+    do_test misc7-17.3 {
+      db eval {
+        pragma writable_schema = true;
+        UPDATE sqlite_master 
+          SET rootpage = $pending_byte_page
+          WHERE type = 'table' AND name = 't3';
+      }
+      execsql {
+        SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = 't3';
+      }
+    } $::pending_byte_page
+    
+    do_test misc7-17.4 {
+      db close
+      sqlite3 db test.db
+      catchsql {
+        SELECT count(*) FROM t3;
+      } 
+    } {1 {database disk image is malformed}}
   }
-} {1 {database is locked}}
-do_test misc7-17.2 {
-  catch {file attributes test.db-journal -permissions rw-------}
-  catch {file attributes test.db-journal -readonly 0}
-  catchsql {
-    SELECT count(*) FROM t3;
-  }
-} {0 32}
-
-set ::pending_byte_page [expr ($::sqlite_pending_byte / 1024) + 1]
-do_test misc7-17.3 {
-  db eval {
-    pragma writable_schema = true;
-    UPDATE sqlite_master 
-      SET rootpage = $pending_byte_page
-      WHERE type = 'table' AND name = 't3';
-  }
-  execsql {
-    SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = 't3';
-  }
-} $::pending_byte_page
-
-do_test misc7-17.4 {
-  db close
-  sqlite3 db test.db
-  catchsql {
-    SELECT count(*) FROM t3;
-  } 
-} {1 {database disk image is malformed}}
 }
+
+# Ticket #2470
+#
+do_test misc7-18.1 {
+  execsql {
+    CREATE TABLE table_1 (col_10);
+    CREATE TABLE table_2 (
+      col_1, col_2, col_3, col_4, col_5,
+      col_6, col_7, col_8, col_9, col_10
+    );
+    SELECT a.col_10
+    FROM
+      (SELECT table_1.col_10 AS col_10 FROM table_1) a,
+      (SELECT table_1.col_10, table_2.col_9 AS qcol_9
+         FROM table_1, table_2
+        GROUP BY table_1.col_10, qcol_9);
+  }
+} {}
+
+# Testing boundary conditions on sqlite3_status()
+#
+do_test misc7-19.1 {
+  sqlite3_status -1 0
+} {21 0 0}
+do_test misc7-19.2 {
+  sqlite3_status 1000 0
+} {21 0 0}
+
+
+# sqlite3_global_recover() is a no-op.  But we might as well test it
+# if only to get the test coverage.
+#
+do_test misc7-20.1 {
+  sqlite3_global_recover
+} {SQLITE_OK}
+
+# Try to open a really long file name.
+#
+do_test misc7-21.1 {
+  set zFile [file join [pwd] "[string repeat abcde 104].db"]
+  set rc [catch {sqlite3 db2 $zFile} msg]
+  list $rc $msg
+} {1 {unable to open database file}}
+
 
 db close
 file delete -force test.db

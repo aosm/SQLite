@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this file is testing the CREATE TABLE statement.
 #
-# $Id: table.test,v 1.47 2007/05/02 17:54:56 drh Exp $
+# $Id: table.test,v 1.50 2009/03/14 08:37:24 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -314,6 +314,14 @@ do_test table-7.3 {
     SELECT * FROM weird;
   }
 } {desc a asc b key 9 14_vac 0 fuzzy_dog_12 xyz begin hi end y'all}
+do_test table-7.3 {
+  execsql {
+    CREATE TABLE savepoint(release);
+    INSERT INTO savepoint(release) VALUES(10);
+    UPDATE savepoint SET release = 5;
+    SELECT release FROM savepoint;
+  }
+} {5}
 
 # Try out the CREATE TABLE AS syntax
 #
@@ -390,6 +398,37 @@ do_test table-8.8 {
     CREATE TABLE t5 AS SELECT * FROM no_such_table;
   }
 } {1 {no such table: no_such_table}}
+
+do_test table-8.9 {
+  execsql {
+    CREATE TABLE t10("col.1" [char.3]);
+    CREATE TABLE t11 AS SELECT * FROM t10;
+    SELECT sql FROM sqlite_master WHERE name = 't11';
+  }
+} {{CREATE TABLE t11("col.1" "char.3")}}
+do_test table-8.10 {
+  execsql {
+    CREATE TABLE t12(
+      a INTEGER,
+      b VARCHAR(10),
+      c VARCHAR(1,10),
+      d VARCHAR(+1,-10),
+      e VARCHAR (+1,-10),
+      f "VARCHAR (+1,-10, 5)",
+      g BIG INTEGER
+    );
+    CREATE TABLE t13 AS SELECT * FROM t12;
+    SELECT sql FROM sqlite_master WHERE name = 't13';
+  }
+} {{CREATE TABLE t13(
+  a INTEGER,
+  b VARCHAR(10),
+  c VARCHAR(1,10),
+  d VARCHAR(+1,-10),
+  e VARCHAR (+1,-10),
+  f "VARCHAR (+1,-10, 5)",
+  g "BIG INTEGER"
+)}}
 
 # Make sure we cannot have duplicate column names within a table.
 #
@@ -612,7 +651,7 @@ do_test table-14.1 {
 } {0 {}}
 
 # Try to drop a table from within a callback:
-do_test table-14.3 {
+do_test table-14.2 {
   set rc [
     catch {
       db eval {SELECT * FROM tablet8 LIMIT 1} {} {
@@ -623,33 +662,35 @@ do_test table-14.3 {
   set result [list $rc $msg]
 } {1 {database table is locked}}
 
-# Now attach a database and ensure that a table can be created in the 
-# attached database whilst in a callback from a query on the main database.
-do_test table-14.4 {
-  file delete -force test2.db
-  file delete -force test2.db-journal
-  execsql {
-    attach 'test2.db' as aux;
-  }
-  db eval {SELECT * FROM tablet8 LIMIT 1} {} {
-    db eval {CREATE TABLE aux.t1(a, b, c)}
-  }
-} {}
-
-# On the other hand, it should be impossible to drop a table when any VMs 
-# are active. This is because VerifyCookie instructions may have already
-# been executed, and btree root-pages may not move after this (which a
-# delete table might do).
-do_test table-14.4 {
-  set rc [
-    catch {
-      db eval {SELECT * FROM tablet8 LIMIT 1} {} {
-        db eval {DROP TABLE aux.t1;}
-      }
-    } msg
-  ] 
-  set result [list $rc $msg]
-} {1 {database table is locked}}
+ifcapable attach {
+  # Now attach a database and ensure that a table can be created in the 
+  # attached database whilst in a callback from a query on the main database.
+  do_test table-14.3 {
+    file delete -force test2.db
+    file delete -force test2.db-journal
+    execsql {
+      ATTACH 'test2.db' as aux;
+    }
+    db eval {SELECT * FROM tablet8 LIMIT 1} {} {
+      db eval {CREATE TABLE aux.t1(a, b, c)}
+    }
+  } {}
+  
+  # On the other hand, it should be impossible to drop a table when any VMs 
+  # are active. This is because VerifyCookie instructions may have already
+  # been executed, and btree root-pages may not move after this (which a
+  # delete table might do).
+  do_test table-14.4 {
+    set rc [
+      catch {
+        db eval {SELECT * FROM tablet8 LIMIT 1} {} {
+          db eval {DROP TABLE aux.t1;}
+        }
+      } msg
+    ] 
+    set result [list $rc $msg]
+  } {1 {database table is locked}}
+}
 
 # Create and drop 2000 tables. This is to check that the balance_shallow()
 # routine works correctly on the sqlite_master table. At one point it

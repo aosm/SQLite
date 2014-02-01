@@ -1,0 +1,14 @@
+SQLite Engineering Notes
+
+------------------------------------------------------------------------------------------------
+SnowLeopard/SQLite 3.6.x changes 
+
+The configure script as distributed doesn't work properly with Mac OS X and needs to be updated via
+
+% cd public_source/ 
+% aclocal
+% glibtoolize -f -c
+% autoconf -f
+
+These commands only need to be issued if you've grabbed a fresh copy of the sqlite public sources.
+

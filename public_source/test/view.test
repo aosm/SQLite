@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this file is testing VIEW statements.
 #
-# $Id: view.test,v 1.33 2006/09/11 23:45:50 drh Exp $
+# $Id: view.test,v 1.39 2008/12/14 14:45:21 danielk1977 Exp $
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
 
@@ -139,13 +139,19 @@ do_test view-3.2 {
     SELECT * FROM v2 LIMIT 1
   }
 } {x 7 a 8 b 9 c 10}
-do_test view-3.3 {
+do_test view-3.3.1 {
   execsql2 {
     DROP VIEW v1;
     CREATE VIEW v1 AS SELECT a AS 'xyz', b+c AS 'pqr', c-b FROM t1;
     SELECT * FROM v1 LIMIT 1
   }
 } {xyz 2 pqr 7 c-b 1}
+do_test view-3.3.2 {
+  execsql2 {
+    CREATE VIEW v1b AS SELECT t1.a, b+c, t1.c FROM t1;
+    SELECT * FROM v1b LIMIT 1
+  }
+} {a 2 b+c 7 c 4}
 
 ifcapable compound {
 do_test  view-3.4 {
@@ -450,14 +456,16 @@ do_test view-12.1 {
   }
 } {1 {parameters are not allowed in views}}
 
-do_test view-13.1 {
-  file delete -force test2.db
-  catchsql {
-    ATTACH 'test2.db' AS two;
-    CREATE TABLE two.t2(x,y);
-    CREATE VIEW v13 AS SELECT y FROM two.t2;
-  }
-} {1 {view v13 cannot reference objects in database two}}
+ifcapable attach {
+  do_test view-13.1 {
+    file delete -force test2.db
+    catchsql {
+      ATTACH 'test2.db' AS two;
+      CREATE TABLE two.t2(x,y);
+      CREATE VIEW v13 AS SELECT y FROM two.t2;
+    }
+  } {1 {view v13 cannot reference objects in database two}}
+}
 
 # Ticket #1658
 #
@@ -497,5 +505,75 @@ do_test view-16.3 {
     DROP VIEW IF EXISTS nosuchview
   }
 } {0 {}}
+
+# correct error message when attempting to drop a view that does not
+# exist.
+#
+do_test view-17.1 {
+  catchsql {
+    DROP VIEW nosuchview
+  }
+} {1 {no such view: nosuchview}}
+do_test view-17.2 {
+  catchsql {
+    DROP VIEW main.nosuchview
+  }
+} {1 {no such view: main.nosuchview}}
+
+do_test view-18.1 {
+  execsql {
+    DROP VIEW t1;
+    DROP TABLE t1;
+    CREATE TABLE t1(a, b, c);
+    INSERT INTO t1 VALUES(1, 2, 3);
+    INSERT INTO t1 VALUES(4, 5, 6);
+
+    CREATE VIEW vv1 AS SELECT * FROM t1;
+    CREATE VIEW vv2 AS SELECT * FROM vv1;
+    CREATE VIEW vv3 AS SELECT * FROM vv2;
+    CREATE VIEW vv4 AS SELECT * FROM vv3;
+    CREATE VIEW vv5 AS SELECT * FROM vv4;
+
+    SELECT * FROM vv5;
+  }
+} {1 2 3 4 5 6}
+
+# Ticket #3308
+# Make sure "rowid" columns in a view are named correctly.
+#
+do_test view-19.1 {
+  execsql {
+    CREATE VIEW v3308a AS SELECT rowid, * FROM t1;
+  }
+  execsql2 {
+    SELECT * FROM v3308a
+  }
+} {rowid 1 a 1 b 2 c 3 rowid 2 a 4 b 5 c 6}
+do_test view-19.2 {
+  execsql {
+    CREATE VIEW v3308b AS SELECT t1.rowid, t1.a, t1.b+t1.c FROM t1;
+  }
+  execsql2 {
+    SELECT * FROM v3308b
+  }
+} {rowid 1 a 1 t1.b+t1.c 5 rowid 2 a 4 t1.b+t1.c 11}
+do_test view-19.3 {
+  execsql {
+    CREATE VIEW v3308c AS SELECT t1.oid, A, t1.b+t1.c AS x FROM t1;
+  }
+  execsql2 {
+    SELECT * FROM v3308c
+  }
+} {rowid 1 a 1 x 5 rowid 2 a 4 x 11}
+
+# Ticket #3539 had this crashing (see commit [5940]).
+do_test view-20.1 {
+  execsql {
+    DROP TABLE IF EXISTS t1;
+    DROP VIEW IF EXISTS v1;
+    CREATE TABLE t1(c1);
+    CREATE VIEW v1 AS SELECT c1 FROM (SELECT t1.c1 FROM t1);
+  }
+} {}
 
 finish_test

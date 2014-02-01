@@ -11,7 +11,7 @@
 # This file implements regression tests for SQLite library.  The
 # focus of this script is extension loading.
 #
-# $Id: loadext.test,v 1.9 2007/04/06 21:42:22 drh Exp $
+# $Id: loadext.test,v 1.17 2009/03/20 09:09:37 danielk1977 Exp $
 
 set testdir [file dirname $argv0]
 source $testdir/tester.tcl
@@ -23,10 +23,47 @@ ifcapable !load_ext {
 
 # The name of the test extension varies by operating system.
 #
-if {$::tcl_platform(platform) eq "windows"} {
+if {$::tcl_platform(platform) eq "windows" || $::tcl_platform(platform) eq "os2"} {
   set testextension ./testloadext.dll
 } else {
   set testextension ./libtestloadext.so
+}
+set gcc_shared "-shared -fPIC"
+if {$::tcl_platform(os) eq "Darwin"} {
+  set gcc_shared -dynamiclib
+}
+
+# The error messages tested by this file are operating system dependent
+# (because they are returned by sqlite3OsDlError()). For now, they only
+# work with UNIX (and probably only certain kinds of UNIX).
+#
+# When a shared-object cannot be opened because it does not exist, the
+# format of the message returned is:
+#
+#      [format $dlerror_nosuchfile <shared-object-name>]
+#
+# When a shared-object cannot be opened because it consists of the 4
+# characters "blah" only, we expect the error message to be:
+#
+#      [format $dlerror_notadll <shared-object-name>]
+#
+# When a symbol cannot be found within an open shared-object, the error
+# message should be:
+#
+#      [format $dlerror_nosymbol <shared-object-name> <symbol-name>]
+#
+# The exact error messages are not important. The important bit is
+# that SQLite is correctly copying the message from xDlError().
+#
+set dlerror_nosuchfile \
+    {%s: cannot open shared object file: No such file or directory}
+set dlerror_notadll    {%s: file too short}
+set dlerror_nosymbol   {%s: undefined symbol: %s}
+
+if {$::tcl_platform(os) eq "Darwin"} {
+  set dlerror_nosuchfile {dlopen(%s, 10): image not found}
+  set dlerror_notadll    {dlopen(%1$s, 10): no suitable image found.*}
+  set dlerror_nosymbol   {dlsym(XXX, %2$s): symbol not found}
 }
 
 # Make sure the test extension actually exists.  If it does not
@@ -36,9 +73,11 @@ if {$::tcl_platform(platform) eq "windows"} {
 if {![file exists $testextension]} {
   set srcdir [file dir $testdir]/src
   set testextsrc $srcdir/test_loadext.c
-  if {[catch {
-    exec gcc -Wall -I$srcdir -I. -g -shared $testextsrc -o $testextension
-  } msg]} {
+
+  set cmdline [concat exec gcc $gcc_shared]
+  lappend cmdline -Wall -I$srcdir -I. -g $testextsrc -o $testextension
+  
+  if {[catch $cmdline msg]} {
     puts "Skipping loadext tests: Test extension not built..."
     puts $msg
     finish_test
@@ -95,13 +134,12 @@ sqlite3_enable_load_extension db 1
 # Try to load an extension for which the file does not exist.
 #
 do_test loadext-2.1 {
+  file delete -force ${testextension}xx
   set rc [catch {
     sqlite3_load_extension db "${testextension}xx"
   } msg]
   list $rc $msg
-} [list 1 [subst -nocommands \
-  {unable to open shared library [${testextension}xx]}
-]]
+} [list 1 [format $dlerror_nosuchfile ${testextension}xx]]
 
 # Try to load an extension for which the file is not a shared object
 #
@@ -112,10 +150,9 @@ do_test loadext-2.2 {
   set rc [catch {
     sqlite3_load_extension db "${testextension}xx"
   } msg]
-  list $rc $msg
-} [list 1 [subst -nocommands \
-  {unable to open shared library [${testextension}xx]}
-]]
+  set expected_error_pattern [format $dlerror_notadll ${testextension}xx]
+  list $rc [string match $expected_error_pattern $msg]
+} [list 1 1]
 
 # Try to load an extension for which the file is present but the
 # entry point is not.
@@ -124,10 +161,11 @@ do_test loadext-2.3 {
   set rc [catch {
     sqlite3_load_extension db $testextension icecream
   } msg]
+  if {$::tcl_platform(os) eq "Darwin"} {
+    regsub {0x[1234567890abcdefABCDEF]*} $msg XXX msg
+  }
   list $rc $msg
-} [list 1 [subst -nocommands \
-  {no entry point [icecream] in shared library [$testextension]}
-]]
+} [list 1 [format $dlerror_nosymbol $testextension icecream]]
 
 # Try to load an extension for which the entry point fails (returns non-zero) 
 #
@@ -151,11 +189,14 @@ do_test loadext-3.1 {
   }
 } {1 {no such function: half}}
 do_test loadext-3.2 {
-  catchsql {
+  set res [catchsql {
     SELECT load_extension($::testextension)
+  }]
+  if {$::tcl_platform(os) eq "Darwin"} {
+    regsub {0x[1234567890abcdefABCDEF]*} $res XXX res
   }
-} [list 1 "no entry point \[sqlite3_extension_init\]\
-           in shared library \[$testextension\]"]
+  set res
+} [list 1 [format $dlerror_nosymbol $testextension sqlite3_extension_init]]
 do_test loadext-3.3 {
   catchsql {
     SELECT load_extension($::testextension,'testloadext_init')
@@ -166,6 +207,28 @@ do_test loadext-3.4 {
     SELECT half(5);
   }
 } {0 2.5}
+do_test loadext-3.5 {
+  db eval {
+    SELECT sqlite3_status('MEMORY_USED') AS mused
+  } break
+  puts -nonewline " (memory_used=$mused) "
+  expr {$mused>0}
+} {1}
+do_test loadext-3.6 {
+  catchsql {
+    SELECT sqlite3_status('MEMORY_USED_X') AS mused
+  }
+} {1 {unknown status property: MEMORY_USED_X}}
+do_test loadext-3.7 {
+  catchsql {
+    SELECT sqlite3_status(4.53) AS mused
+  }
+} {1 {unknown status type}}
+do_test loadext-3.8 {
+  catchsql {
+    SELECT sqlite3_status(23) AS mused
+  }
+} {1 {sqlite3_status(23,...) returns 21}}
 
 # Ticket #1863
 # Make sure the extension loading mechanism will not work unless it
@@ -192,6 +255,20 @@ do_test loadext-4.3 {
   }
 } {1 {not authorized}}
 
+source $testdir/malloc_common.tcl
 
+
+# Malloc failure in sqlite3_auto_extension and sqlite3_load_extension
+#
+do_malloc_test loadext-5 -tclprep {
+  sqlite3_reset_auto_extension
+} -tclbody {
+  if {[autoinstall_test_functions]==7} {error "out of memory"}
+}
+do_malloc_test loadext-6 -tclbody {
+  db enable_load_extension 1
+  sqlite3_load_extension db $::testextension testloadext_init
+}
+autoinstall_test_functions
 
 finish_test

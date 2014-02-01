@@ -1,0 +1,22 @@
+(
+	{
+		OpenSourceProject = SQLite;
+		OpenSourceVersion = "3.6.12";
+		OpenSourceURL = "http://www.sqlite.org/sqlite-3.6.12.tar.gz";
+		OpenSourceSHA1 = "05ffb484d264030de41ee4bde0915bf1900d5f32";
+		OpenSourceImportDate = "Apr 6, 2009";
+		"OpenSourceModifications" = (
+			"src/mem1.c",
+			"src/os_unix.c",
+			"src/pcache1.c",
+			"src/pcache_purgeable.c",
+			"src/sqlite.h.in",
+			"src/sqliteInt.h",
+			"src/vdbe.c",
+			"src/vdbeapi.c",
+			"src/walker.c",
+		);
+		OpenSourceLicense = "Public Domain";
+		"OpenSourceLicenseFile" = "SQLite.txt";
+	},
+)

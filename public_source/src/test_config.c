@@ -16,13 +16,22 @@
 ** The focus of this file is providing the TCL testing layer
 ** access to compile-time constants.
 **
-** $Id: test_config.c,v 1.6 2007/06/07 10:55:36 drh Exp $
+** $Id: test_config.c,v 1.48 2009/03/16 13:19:36 danielk1977 Exp $
 */
+
+#include "sqliteLimit.h"
+
 #include "sqliteInt.h"
 #include "tcl.h"
-#include "os.h"
 #include <stdlib.h>
 #include <string.h>
+
+/*
+** Macro to stringify the results of the evaluation a pre-processor
+** macro. i.e. so that STRINGVALUE(SQLITE_NOMEM) -> "7".
+*/
+#define STRINGVALUE2(x) #x
+#define STRINGVALUE(x) STRINGVALUE2(x)
 
 /*
 ** This routine sets entries in the global ::sqlite_options() array variable
@@ -60,6 +69,30 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "lfs", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#if 1 /* def SQLITE_MEMDEBUG */
+  Tcl_SetVar2(interp, "sqlite_options", "memdebug", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "memdebug", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_MEMSYS3
+  Tcl_SetVar2(interp, "sqlite_options", "mem3", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "mem3", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_MEMSYS5
+  Tcl_SetVar2(interp, "sqlite_options", "mem5", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "mem5", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_MUTEX_OMIT
+  Tcl_SetVar2(interp, "sqlite_options", "mutex", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "mutex", "1", TCL_GLOBAL_ONLY);
+#endif
+
 #ifdef SQLITE_OMIT_ALTERTABLE
   Tcl_SetVar2(interp, "sqlite_options", "altertable", "0", TCL_GLOBAL_ONLY);
 #else
@@ -70,6 +103,12 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "analyze", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "analyze", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_ATOMIC_WRITE
+  Tcl_SetVar2(interp, "sqlite_options", "atomicwrite", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "atomicwrite", "0", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_ATTACH
@@ -95,16 +134,23 @@ static void set_options(Tcl_Interp *interp){
 #else
   Tcl_SetVar2(interp, "sqlite_options", "autovacuum", "1", TCL_GLOBAL_ONLY);
 #endif /* SQLITE_OMIT_AUTOVACUUM */
-#if !defined(SQLITE_DEFAULT_AUTOVACUUM) || SQLITE_DEFAULT_AUTOVACUUM==0
+#if !defined(SQLITE_DEFAULT_AUTOVACUUM)
   Tcl_SetVar2(interp,"sqlite_options","default_autovacuum","0",TCL_GLOBAL_ONLY);
 #else
-  Tcl_SetVar2(interp,"sqlite_options","default_autovacuum","1",TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp, "sqlite_options", "default_autovacuum", 
+      STRINGVALUE(SQLITE_DEFAULT_AUTOVACUUM), TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_BETWEEN_OPTIMIZATION
   Tcl_SetVar2(interp, "sqlite_options", "between_opt", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "between_opt", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_BUILTIN_TEST
+  Tcl_SetVar2(interp, "sqlite_options", "builtin_test", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "builtin_test", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_BLOB_LITERAL
@@ -149,7 +195,7 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "conflict", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#if OS_UNIX
+#if SQLITE_OS_UNIX
   Tcl_SetVar2(interp, "sqlite_options", "crashtest", "1", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "crashtest", "0", TCL_GLOBAL_ONLY);
@@ -159,6 +205,18 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "datetime", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "datetime", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_DECLTYPE
+  Tcl_SetVar2(interp, "sqlite_options", "decltype", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "decltype", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_DEPRECATED
+  Tcl_SetVar2(interp, "sqlite_options", "deprecated", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "deprecated", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_DISKIO
@@ -195,6 +253,18 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "fts2", "1", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "fts2", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_FTS3
+  Tcl_SetVar2(interp, "sqlite_options", "fts3", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "fts3", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_GET_TABLE
+  Tcl_SetVar2(interp, "sqlite_options", "gettable", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "gettable", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_GLOBALRECOVER
@@ -239,6 +309,22 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "load_ext", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_OMIT_LOCALTIME
+  Tcl_SetVar2(interp, "sqlite_options", "localtime", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "localtime", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_OMIT_LOOKASIDE
+  Tcl_SetVar2(interp, "sqlite_options", "lookaside", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "lookaside", "1", TCL_GLOBAL_ONLY);
+#endif
+
+Tcl_SetVar2(interp, "sqlite_options", "long_double",
+              sizeof(LONGDOUBLE_TYPE)>sizeof(double) ? "1" : "0",
+              TCL_GLOBAL_ONLY);
+
 #ifdef SQLITE_OMIT_MEMORYDB
   Tcl_SetVar2(interp, "sqlite_options", "memorydb", "0", TCL_GLOBAL_ONLY);
 #else
@@ -282,16 +368,16 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "progress", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_ENABLE_REDEF_IO
-  Tcl_SetVar2(interp, "sqlite_options", "redefio", "1", TCL_GLOBAL_ONLY);
-#else
-  Tcl_SetVar2(interp, "sqlite_options", "redefio", "0", TCL_GLOBAL_ONLY);
-#endif
-
 #ifdef SQLITE_OMIT_REINDEX
   Tcl_SetVar2(interp, "sqlite_options", "reindex", "0", TCL_GLOBAL_ONLY);
 #else
   Tcl_SetVar2(interp, "sqlite_options", "reindex", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_ENABLE_RTREE
+  Tcl_SetVar2(interp, "sqlite_options", "rtree", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "rtree", "0", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_SCHEMA_PRAGMAS
@@ -306,6 +392,30 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "schema_version", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#if !defined(SQLITE_ENABLE_LOCKING_STYLE)
+#  if defined(__APPLE__)
+#    define SQLITE_ENABLE_LOCKING_STYLE 1
+#  else
+#    define SQLITE_ENABLE_LOCKING_STYLE 0
+#  endif
+#endif
+#if SQLITE_ENABLE_LOCKING_STYLE && defined(__APPLE__)
+  Tcl_SetVar2(interp,"sqlite_options","lock_proxy_pragmas","1",TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp,"sqlite_options","lock_proxy_pragmas","0",TCL_GLOBAL_ONLY);
+#endif
+#if defined(SQLITE_PREFER_PROXY_LOCKING) && defined(__APPLE__)
+  Tcl_SetVar2(interp,"sqlite_options","prefer_proxy_locking","1",TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp,"sqlite_options","prefer_proxy_locking","0",TCL_GLOBAL_ONLY);
+#endif
+#if defined(SQLITE_ENABLE_PURGEABLE_PCACHE) && defined(__APPLE__)
+    Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","1",TCL_GLOBAL_ONLY);
+#else
+    Tcl_SetVar2(interp,"sqlite_options","enable_purgeable_pcache","0",TCL_GLOBAL_ONLY);
+#endif
+    
+    
 #ifdef SQLITE_OMIT_SHARED_CACHE
   Tcl_SetVar2(interp, "sqlite_options", "shared_cache", "0", TCL_GLOBAL_ONLY);
 #else
@@ -324,10 +434,14 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "tclvar", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#if defined(THREADSAFE) && THREADSAFE
-  Tcl_SetVar2(interp, "sqlite_options", "threadsafe", "1", TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp, "sqlite_options", "threadsafe", 
+      STRINGVALUE(SQLITE_THREADSAFE), TCL_GLOBAL_ONLY);
+  assert( sqlite3_threadsafe()==SQLITE_THREADSAFE );
+
+#ifdef SQLITE_OMIT_TEMPDB
+  Tcl_SetVar2(interp, "sqlite_options", "tempdb", "0", TCL_GLOBAL_ONLY);
 #else
-  Tcl_SetVar2(interp, "sqlite_options", "threadsafe", "0", TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp, "sqlite_options", "tempdb", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_TRACE
@@ -342,10 +456,10 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "trigger", "1", TCL_GLOBAL_ONLY);
 #endif
 
-#ifdef SQLITE_OMIT_TEMPDB
-  Tcl_SetVar2(interp, "sqlite_options", "tempdb", "0", TCL_GLOBAL_ONLY);
+#ifdef SQLITE_OMIT_TRUCATE_OPTIMIZATION
+  Tcl_SetVar2(interp, "sqlite_options", "truncate_opt", "0", TCL_GLOBAL_ONLY);
 #else
-  Tcl_SetVar2(interp, "sqlite_options", "tempdb", "1", TCL_GLOBAL_ONLY);
+  Tcl_SetVar2(interp, "sqlite_options", "truncate_opt", "1", TCL_GLOBAL_ONLY);
 #endif
 
 #ifdef SQLITE_OMIT_UTF16
@@ -372,91 +486,62 @@ static void set_options(Tcl_Interp *interp){
   Tcl_SetVar2(interp, "sqlite_options", "vtab", "1", TCL_GLOBAL_ONLY);
 #endif
 
+#ifdef SQLITE_OMIT_WSD
+  Tcl_SetVar2(interp, "sqlite_options", "wsd", "0", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "wsd", "1", TCL_GLOBAL_ONLY);
+#endif
+
+#if defined(SQLITE_ENABLE_UPDATE_DELETE_LIMIT) && !defined(SQLITE_OMIT_SUBQUERY)
+  Tcl_SetVar2(interp, "sqlite_options", "update_delete_limit", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "update_delete_limit", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#if defined(SQLITE_ENABLE_UNLOCK_NOTIFY)
+  Tcl_SetVar2(interp, "sqlite_options", "unlock_notify", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "unlock_notify", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef SQLITE_SECURE_DELETE
+  Tcl_SetVar2(interp, "sqlite_options", "secure_delete", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "secure_delete", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#ifdef YYTRACKMAXSTACKDEPTH
+  Tcl_SetVar2(interp, "sqlite_options", "yytrackmaxstackdepth", "1", TCL_GLOBAL_ONLY);
+#else
+  Tcl_SetVar2(interp, "sqlite_options", "yytrackmaxstackdepth", "0", TCL_GLOBAL_ONLY);
+#endif
+
+#define LINKVAR(x) { \
+    static const int cv_ ## x = SQLITE_ ## x; \
+    Tcl_LinkVar(interp, "SQLITE_" #x, (char *)&(cv_ ## x), \
+                TCL_LINK_INT | TCL_LINK_READ_ONLY); }
+
+  LINKVAR( MAX_LENGTH );
+  LINKVAR( MAX_COLUMN );
+  LINKVAR( MAX_SQL_LENGTH );
+  LINKVAR( MAX_EXPR_DEPTH );
+  LINKVAR( MAX_COMPOUND_SELECT );
+  LINKVAR( MAX_VDBE_OP );
+  LINKVAR( MAX_FUNCTION_ARG );
+  LINKVAR( MAX_VARIABLE_NUMBER );
+  LINKVAR( MAX_PAGE_SIZE );
+  LINKVAR( MAX_PAGE_COUNT );
+  LINKVAR( MAX_LIKE_PATTERN_LENGTH );
+  LINKVAR( DEFAULT_TEMP_CACHE_SIZE );
+  LINKVAR( DEFAULT_CACHE_SIZE );
+  LINKVAR( DEFAULT_PAGE_SIZE );
+  LINKVAR( DEFAULT_FILE_FORMAT );
+  LINKVAR( MAX_ATTACHED );
+
   {
-    static int sqlite_max_length = SQLITE_MAX_LENGTH;
-    Tcl_LinkVar(interp, "SQLITE_MAX_LENGTH",
-           (char*)&sqlite_max_length, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_column = SQLITE_MAX_COLUMN;
-    Tcl_LinkVar(interp, "SQLITE_MAX_COLUMN",
-           (char*)&sqlite_max_column, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_sql_length = SQLITE_MAX_SQL_LENGTH;
-    Tcl_LinkVar(interp, "SQLITE_MAX_SQL_LENGTH",
-           (char*)&sqlite_max_sql_length, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_expr_depth = SQLITE_MAX_EXPR_DEPTH;
-    Tcl_LinkVar(interp, "SQLITE_MAX_EXPR_DEPTH",
-           (char*)&sqlite_max_expr_depth, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_compound_select = SQLITE_MAX_COMPOUND_SELECT;
-    Tcl_LinkVar(interp, "SQLITE_MAX_COMPOUND_SELECT",
-           (char*)&sqlite_max_compound_select, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_vdbe_op = SQLITE_MAX_VDBE_OP;
-    Tcl_LinkVar(interp, "SQLITE_MAX_VDBE_OP",
-           (char*)&sqlite_max_vdbe_op, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_function_arg = SQLITE_MAX_FUNCTION_ARG;
-    Tcl_LinkVar(interp, "SQLITE_MAX_FUNCTION_ARG",
-           (char*)&sqlite_max_function_arg, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_default_temp_cache_size = SQLITE_DEFAULT_TEMP_CACHE_SIZE;
-    Tcl_LinkVar(interp, "SQLITE_DEFAULT_TEMP_CACHE_SIZE",
-           (char*)&sqlite_default_temp_cache_size,
-           TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_default_cache_size = SQLITE_DEFAULT_CACHE_SIZE;
-    Tcl_LinkVar(interp, "SQLITE_DEFAULT_CACHE_SIZE",
-           (char*)&sqlite_default_cache_size, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_variable_number = SQLITE_MAX_VARIABLE_NUMBER;
-    Tcl_LinkVar(interp, "SQLITE_MAX_VARIABLE_NUMBER",
-           (char*)&sqlite_max_variable_number, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_default_page_size = SQLITE_DEFAULT_PAGE_SIZE;
-    Tcl_LinkVar(interp, "SQLITE_DEFAULT_PAGE_SIZE",
-           (char*)&sqlite_default_page_size, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_page_size = SQLITE_MAX_PAGE_SIZE;
-    Tcl_LinkVar(interp, "SQLITE_MAX_PAGE_SIZE",
-           (char*)&sqlite_max_page_size, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_page_count = SQLITE_MAX_PAGE_COUNT;
-    Tcl_LinkVar(interp, "SQLITE_MAX_PAGE_COUNT",
-           (char*)&sqlite_max_page_count, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int temp_store = TEMP_STORE;
-    Tcl_LinkVar(interp, "TEMP_STORE",
-           (char*)&temp_store, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_default_file_format = SQLITE_DEFAULT_FILE_FORMAT;
-    Tcl_LinkVar(interp, "SQLITE_DEFAULT_FILE_FORMAT",
-           (char*)&sqlite_default_file_format, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_like_pattern = SQLITE_MAX_LIKE_PATTERN_LENGTH;
-    Tcl_LinkVar(interp, "SQLITE_MAX_LIKE_PATTERN_LENGTH",
-           (char*)&sqlite_max_like_pattern, TCL_LINK_INT|TCL_LINK_READ_ONLY);
-  }
-  {
-    static int sqlite_max_attached = SQLITE_MAX_ATTACHED;
-    Tcl_LinkVar(interp, "SQLITE_MAX_ATTACHED",
-           (char*)&sqlite_max_attached, TCL_LINK_INT|TCL_LINK_READ_ONLY);
+    static const int cv_TEMP_STORE = SQLITE_TEMP_STORE;
+    Tcl_LinkVar(interp, "TEMP_STORE", (char *)&(cv_TEMP_STORE),
+                TCL_LINK_INT | TCL_LINK_READ_ONLY);
   }
 }
 
